@@ -18,7 +18,7 @@ class ExercisesData:
         return len(self.__exercises_dict)
 
     def get_exercise_name(self, idx: int):
-        return self.__exercises_dict[idx]
+        return self.__exercises_dict[str(idx)]
 
     def get_exercise_image_dir(self, idx: int):
         return self.__exercises_images_dir / f'{idx}.png'

@@ -29,10 +29,7 @@ class AppSensoGloveClient(multiprocessing.Process):
         self.abort_flag = abort_flag
     
     def __del__(self):
-        try:
-            self.close_connection()
-        except:
-            pass
+        self.close_connection()
 
     def glove_recv(self, timeout: float = 1):
         self.glove_socket.settimeout(timeout)
@@ -56,7 +53,6 @@ class AppSensoGloveClient(multiprocessing.Process):
         answer = None
         while not isinstance(answer, dict) or "data" not in answer:
             answer = self.glove_recv(1)
-            print(answer)
 
     def make_connect(self):
         try:

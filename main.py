@@ -18,23 +18,23 @@ patient_info_options: PatientInfoOptionsType = {
 }
 
 if __name__=='__main__':
-    try:
-        app = QApplication()
-        app.setFont(QFont('Arial', 18))
+    app = QApplication()
+    app.setFont(QFont('Arial', 18))
 
-        controller = Controller(
-            settings_dir=settings_dir,
-            patient_info_options=patient_info_options,
-            exercises_file_dir=exercises_dir,
-            exercises_images_dir=exercises_images_dir
-        )
+    controller = Controller(
+        settings_dir=settings_dir,
+        patient_info_options=patient_info_options,
+        exercises_file_dir=exercises_dir,
+        exercises_images_dir=exercises_images_dir
+    )
+
+    try:
         controller.stacked_windows.show()
 
         sys.exit(app.exec())
     
     except BaseException as e:
+        controller.close_all_connections()
+        app.closeAllWindows()
+        app.exit()
         raise e
-        try:
-            controller.close_all_connections()
-        except:
-            pass

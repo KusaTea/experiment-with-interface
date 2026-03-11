@@ -47,15 +47,10 @@ class QuattrocentoClient(multiprocessing.Process):
         self.data_save_dir = data_save_dir
 
     def __del__(self):
-        try:
-            self.client.close()
-        except:
-            pass
+        self.stop_listening()
 
     def recieve_data(self, data_group: h5py.Group):
         self.client.send(self.settings())
-        
-        print('Acquisition in process...')
         
         buffer = b''
         while not (self.abort_flag.is_set()):
@@ -92,14 +87,19 @@ class QuattrocentoClient(multiprocessing.Process):
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client.settimeout(5)
             self.client.connect(self.ip_port)
+            self.client.settimeout(None)
             self.ready_flag.set()
             return True
         except:
             return False
 
     def send_stop_command(self):
-        self.settings.acquisition_byte = 128
-        self.client.send(self.settings())
+        try:
+            self.settings.acquisition_byte = 128
+            self.client.send(self.settings())
+        except:
+            pass
+
 
     def stop_listening(self):
         self.send_stop_command()
