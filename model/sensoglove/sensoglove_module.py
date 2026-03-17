@@ -4,6 +4,11 @@ import time
 from pathlib import Path
 
 import multiprocessing
+from multiprocessing.synchronize import Event
+
+
+class SensoGloveException(Exception):
+    pass
 
 
 class AppSensoGloveClient(multiprocessing.Process):
@@ -11,9 +16,9 @@ class AppSensoGloveClient(multiprocessing.Process):
     def __init__(
             self,
             save_dir: Path,
-            start_flag: multiprocessing.Event,
-            ready_flag: multiprocessing.Event,
-            abort_flag: multiprocessing.Event,
+            start_flag: Event,
+            ready_flag: Event,
+            abort_flag: Event,
             ip_address: str = "127.0.0.1",
             port: int = 53450
             ):
@@ -28,31 +33,35 @@ class AppSensoGloveClient(multiprocessing.Process):
         self.ready_flag = ready_flag
         self.abort_flag = abort_flag
     
+
     def __del__(self):
-        self.close_connection()
+        try:
+            self.close_connection()
+        except:
+            pass
+
 
     def glove_recv(self, timeout: float = 1):
         self.glove_socket.settimeout(timeout)
+
         try:
             data = self.glove_socket.recv(60000)
             try:
                 return json.loads(data.decode('utf-8'))
             except json.JSONDecodeError:
                 return data
-        except socket.timeout:
-            print("SensoGlove: Timeout of data receiving")
-            return None
-        except BlockingIOError:
-            print("SensoGlove: BlockingIOError")
-            return None
+            
+        except TimeoutError:
+            raise SensoGloveException('Timeout of data receiving')
         except Exception as e:
-            print(f"SensoGlove: Receive error: {e}")
-            return None
+            return SensoGloveException(str(e))
     
+
     def check_app_connection(self):
         answer = None
         while not isinstance(answer, dict) or "data" not in answer:
             answer = self.glove_recv(1)
+
 
     def make_connect(self):
         try:
@@ -61,37 +70,37 @@ class AppSensoGloveClient(multiprocessing.Process):
             self.check_app_connection()
             self.ready_flag.set()
             return True
-        except:
+        except TimeoutError:
+            print(SensoGloveException('Timeout of connection'))
             return False
     
+
     def get_data(self):
         with open(self.save_dir, 'w') as save_file:
             json.dump({"start_time": time.time()}, save_file)
             save_file.write('\n')
             while not self.abort_flag.is_set():
                     try:     
-                        response = self.glove_recv(0.1)
+                        response = self.glove_recv(1)
                         if isinstance(response, dict) and "data" in response:
                             json.dump(response, save_file)
                             save_file.write('\n')
+                    except SensoGloveException:
+                        continue
                     except KeyboardInterrupt:
                         break
     
+
     def run(self):
         try:
             while not self.start_flag.is_set():
                 continue
             self.get_data()
 
-        except KeyboardInterrupt:
-            print("\nInterrupted by user")
-        except Exception as e:
-            print("SensoGlove")
-            print(f"Error: {e}")
         finally:
-            print("Disconnecting...")
             self.close_connection()
 
     
     def close_connection(self):
+        self.glove_socket.shutdown(socket.SHUT_RDWR)
         self.glove_socket.close()

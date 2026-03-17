@@ -43,9 +43,9 @@ class SensoGloveRawDataReader:
                     data['fingers'].append(self.__transform_fingers_data(line_data['data']['fingers']))
                     data['timestamps'].append(int(line_data['data']['ts']))
 
-        for key, value in data.items():
-            if key == 'start': continue
-            data[key] = np.array(value, dtype=value[0].dtype)
+        for key in ('imu', 'bones', 'fingers'):
+            data[key] = np.array(data[key], dtype=np.float64)
+        data['timestamps'] = np.array(data['timestamps'], dtype=np.int64)
 
         return data
     
