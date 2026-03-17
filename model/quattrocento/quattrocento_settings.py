@@ -3,6 +3,7 @@ from . import quattrocento_transform_dicts as qtdicts
 
 
 class QuattrocentoSettings:
+
     def __init__(self, options: qtpe.OptionsDict):
         self.acquisition_byte = self.construct_acquire_byte(options['acquisition_byte_info'])
         self.front_panel_byte = self.construct_front_panel_byte(options['front_panel_byte_info'])
@@ -15,14 +16,17 @@ class QuattrocentoSettings:
         self.buffer_size = 2 * self.num_of_channels * self.sampling_rate
         self.mV_constant = 5 / (2 ** 16) / 150 * 1000
 
-    def __call__(self):
+
+    def get_bytes(self) -> bytes:
         self.settings_bytes = self.concat()
         results = self.settings_bytes + [self.calculate_crc_8(self.settings_bytes)]
         return self.transform_binary_to_bytes(self.transform_list_to_binary(results))
 
+
     def concat(self):
         sets = [self.acquisition_byte, self.front_panel_byte, self.rear_panel_byte] + self.channels_bytes
         return sets
+
 
     def calculate_crc_8(self, vector: list) -> int:
         crc = 0
@@ -43,15 +47,16 @@ class QuattrocentoSettings:
                 byte = byte // 2
         return crc
 
+
     def transform_list_to_binary(self, values: list) -> str:
-        values = [format(num, '08b') for num in values]
-        values = ''.join(values)
-        return values
+        return ''.join([format(num, '08b') for num in values])
+
 
     def transform_binary_to_bytes(self, binary: str) -> bytes:
         dec = int(binary, 2)
         dec = dec.to_bytes(40, byteorder="big")
         return dec
+
 
     def construct_acquire_byte(self, acquire_byte_info: qtpe.AcquisitionByteDict) -> int:
         decimator_encoded = int(acquire_byte_info['decimator']) * 64
@@ -62,15 +67,18 @@ class QuattrocentoSettings:
         return 128 + decimator_encoded + record_encoded + sampling_rate_encoded \
             + channels_encoded + acquiring_encoded
 
+
     def construct_front_panel_byte(self, front_panel_byte_info: qtpe.FrontPanelByteDict) -> int:
         assert 0 <= front_panel_byte_info['source_channel'] <= 12, 'Wrong number of channel was given. It has to be in range [0, 12]'
         assert front_panel_byte_info['gain'] in {1, 2, 4, 16}, 'Wrong number for analog output gain was given. List of possible values: 1, 2, 4, 16'
 
         return qtdicts.analog_output_gain_transform_dict[front_panel_byte_info['gain']] + front_panel_byte_info['source_channel']
 
+
     def construct_rear_panel_byte(self, rear_panel_byte_info: qtpe.RearPanelByteDict) -> int:
         assert 0 <= rear_panel_byte_info['rear_in_channel_num'] <= 16, 'Wrong number of channels for output was given. It has to be in range [0, 16]'
         return rear_panel_byte_info['rear_in_channel_num']
+
 
     def get_channels_bytes_list(self, channels: qtpe.ChannelsBytesDict) -> list[int]:
         return self.construct_channel_byte(*channels['in_1']) +\
@@ -85,6 +93,7 @@ class QuattrocentoSettings:
             self.construct_channel_byte(*channels['multiple_in_2']) +\
             self.construct_channel_byte(*channels['multiple_in_3']) +\
             self.construct_channel_byte(*channels['multiple_in_4'])
+
 
     def construct_channel_byte(self, muscle_byte: qtpe.ChannelMuscleByteDict, electrode_adapter_byte: qtpe.ChannelElectrodeAdapterByteDict, last_byte: qtpe.ChannelLastByteDict) -> list:
         assert 0 <= muscle_byte['muscle_index'] <= 64, 'Wrong index of muscle was given. It has to be in range [0, 64]'

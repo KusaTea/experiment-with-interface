@@ -1,14 +1,19 @@
 import socket
-import datetime
 import multiprocessing
+from multiprocessing.synchronize import Event
 import numpy as np
 import time
-import datetime
 from pathlib import Path
+from select import select
+from copy import deepcopy
 
 import h5py
 
 from .quattrocento_settings import QuattrocentoSettings
+
+
+class QuattrocentoError(Exception):
+    pass
 
 
 class QuattrocentoClient(multiprocessing.Process):
@@ -32,9 +37,9 @@ class QuattrocentoClient(multiprocessing.Process):
     def __init__(self,
                  ip_port: tuple,
                  settings: QuattrocentoSettings,
-                 abort_flag: multiprocessing.Event,
-                 start_flag: multiprocessing.Event,
-                 ready_flag: multiprocessing.Event,
+                 abort_flag: Event,
+                 start_flag: Event,
+                 ready_flag: Event,
                  data_save_dir: Path
                  ):
         super().__init__(name='Quattrocento')
@@ -46,25 +51,63 @@ class QuattrocentoClient(multiprocessing.Process):
         self.ready_flag = ready_flag
         self.data_save_dir = data_save_dir
 
-    def __del__(self):
-        self.stop_listening()
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.settimeout(5)
 
-    def recieve_data(self, data_group: h5py.Group):
-        self.client.send(self.settings())
+
+    def recieve_data(self, bufsize: int) -> bytes:
+        try:
+            ready = select([self.client], [], [], 10)
+            if ready[0]:
+                return self.client.recv(bufsize)
+            else:
+                raise TimeoutError()
+
+        except TimeoutError:
+            raise QuattrocentoError('Timeout of data receiving')
+        
+
+    def send_data(self, data):
+        try:
+            self.client.sendall(data)
+        except TimeoutError:
+            raise QuattrocentoError('Timeout of data sending')
+            
+
+
+    def recieve_data_process(self, data_group: h5py.Group):
+        self.send_data(self.settings.get_bytes())
         
         buffer = b''
-        while not (self.abort_flag.is_set()):
-            start = str(time.time())
-            while len(buffer) < self.settings.buffer_size and not(self.abort_flag.is_set()):
-                buffer += self.client.recv(self.settings.buffer_size - len(buffer))
-            data = np.frombuffer(buffer[:self.settings.buffer_size], dtype=np.int16).reshape(self.settings.sampling_rate, self.settings.num_of_channels)
-            buffer = buffer[self.settings.buffer_size:]
-            data_group.create_dataset(name=start, data=data)
+        while not self.abort_flag.is_set():
+            ts = str(time.time())
+
+            while len(buffer) < self.settings.buffer_size and not self.abort_flag.is_set():
+                buffer += self.recieve_data(self.settings.buffer_size - len(buffer))
+
+            if len(buffer) >= self.settings.buffer_size:
+                data = np.frombuffer(buffer[:self.settings.buffer_size], dtype=np.int16).reshape(self.settings.sampling_rate, self.settings.num_of_channels)
+                buffer = buffer[self.settings.buffer_size:]
+
+                data_group.create_dataset(name=ts, data=data)
+    
+
+    def get_demo_data(self):
+        try:
+            self.send_data(self.settings.get_bytes())
+            self.recieve_data(self.settings.buffer_size)
+        finally:
+            self.send_stop_command()
+
     
     def run(self):
         try:
             with h5py.File(self.data_save_dir, 'a', track_order=True) as dataset_file:
-                group = dataset_file.create_group("emg")
+                try:
+                    group = dataset_file.create_group("emg")
+                except ValueError:
+                    del dataset_file['emg']
+                    group = dataset_file.create_group("emg")
 
                 group.attrs["sampling_rate"] = self.settings.sampling_rate
                 group.attrs["channels_num"] = self.settings.num_of_channels
@@ -75,32 +118,32 @@ class QuattrocentoClient(multiprocessing.Process):
 
                 while not self.start_flag.is_set():
                     time.sleep(0.1)
-                self.recieve_data(data_group)
-        except BaseException as e:
-            print("Quattrocento")
-            print(e)
+
+                self.recieve_data_process(data_group)
+        
         finally:
             self.stop_listening()
 
-    def make_connect(self):
+
+    def make_connect(self) -> bool:
         try:
-            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client.settimeout(5)
             self.client.connect(self.ip_port)
-            self.client.settimeout(None)
+            self.client.setblocking(True)
+            self.get_demo_data()
             self.ready_flag.set()
             return True
-        except:
+        except BaseException as e:
+            print(e)
             return False
 
+
     def send_stop_command(self):
-        try:
-            self.settings.acquisition_byte = 128
-            self.client.send(self.settings())
-        except:
-            pass
+        turn_off_settings = deepcopy(self.settings)
+        turn_off_settings.acquisition_byte = 128
+        self.send_data(turn_off_settings.get_bytes())
 
 
     def stop_listening(self):
         self.send_stop_command()
+        self.client.shutdown(socket.SHUT_RDWR)
         self.client.close()
