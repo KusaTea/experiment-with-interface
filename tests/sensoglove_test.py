@@ -2,8 +2,7 @@ from pathlib import Path
 import multiprocessing as mlp
 from time import sleep, time
 
-from model.sensoglove import AppSensoGloveClient
-from model.sensoglove import SensoGloveRawDataReader
+from model.sensoglove import SensogloveModule, SensogloveDataHandler, SensogloveRawDataReader
 
 
 class SensoGloveTest:
@@ -15,54 +14,39 @@ class SensoGloveTest:
             glove_port: int
             ):
         
-        self.ready_flag = mlp.Event()
         self.start_flag = mlp.Event()
         self.abort_flag = mlp.Event()
 
-        self.sensoglove_client = AppSensoGloveClient(
-            save_dir=temp_folder_dir,
-            start_flag=self.start_flag,
-            ready_flag=self.ready_flag,
-            abort_flag=self.abort_flag,
+        self.sensoglove_module = SensogloveModule(
             ip_address=glove_ip_address,
             port=glove_port
         )
 
-        self.data_reader = SensoGloveRawDataReader(file_dir=temp_folder_dir)
+        self.data_handler = SensogloveDataHandler(
+            module=self.sensoglove_module,
+            save_folder_dir=temp_folder_dir,
+            abort_flag=self.abort_flag,
+            start_flag=self.start_flag
+        )
+
+        self.data_reader = SensogloveRawDataReader(file_dir=temp_folder_dir)
     
 
-    def start_test(self):
-        try:
-            if not self.sensoglove_client.make_connect():
-                raise Exception('Connection was failed')
-            
-            print('Connection was made')
+    def start_test(self, test_duration_in_s: int):
+        self.data_handler.start()
+        print('Connected')
 
-            while not self.ready_flag:
-                sleep(1)
+        self.start_flag.set()
+        print('Process started')
 
-            self.sensoglove_client.start()
-            print('Process was started')
-            self.start_flag.set()
-
-            start = time()
-            while time() - start < 5:
-                sleep(0.5)
-            
+        start = time()
+        while time() - start < test_duration_in_s:
+            sleep(0.1)
+        
+        if self.abort_flag.is_set():
+            print('Fail')
+        else:
             self.abort_flag.set()
-            print('Abort flag was set')
-
-        except BaseException as e:
-            self.abort_flag.set()
-            print(e)
-
-        try:
-            self.sensoglove_client.join(10)
-        except TimeoutError:
-            self.sensoglove_client.terminate()
-        except AssertionError:
-            pass
-        self.sensoglove_client.close()
-
+            print('Success')
 
         print(self.data_reader.get_valuable_data())
