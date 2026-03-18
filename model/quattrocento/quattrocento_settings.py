@@ -23,6 +23,13 @@ class QuattrocentoSettings:
         return self.transform_binary_to_bytes(self.transform_list_to_binary(results))
 
 
+    def get_stop_command_bytes(self) -> bytes:
+        self.settings_bytes = self.concat()
+        self.settings_bytes[0] = 128
+        results = self.settings_bytes + [self.calculate_crc_8(self.settings_bytes)]
+        return self.transform_binary_to_bytes(self.transform_list_to_binary(results))
+
+
     def concat(self):
         sets = [self.acquisition_byte, self.front_panel_byte, self.rear_panel_byte] + self.channels_bytes
         return sets
