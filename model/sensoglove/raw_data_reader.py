@@ -6,7 +6,7 @@ import numpy as np
 from ..arguments_types import data_types as dtpe
 
 
-class SensoGloveRawDataReader:
+class SensogloveRawDataReader:
 
     def __init__(self, file_dir: Path):
         self.file_dir = file_dir / 'glove_data.json'

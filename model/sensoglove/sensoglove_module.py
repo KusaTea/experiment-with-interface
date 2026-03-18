@@ -1,106 +1,74 @@
 import socket
+from select import select
 import json
-import time
-from pathlib import Path
 
-import multiprocessing
-from multiprocessing.synchronize import Event
+from ..abstracts import ModuleAbstract
 
 
-class SensoGloveException(Exception):
+class SensogloveException(Exception):
     pass
 
 
-class AppSensoGloveClient(multiprocessing.Process):
-    '''This class is using TCP connection'''
+class SensogloveModule(ModuleAbstract):
+
     def __init__(
-            self,
-            save_dir: Path,
-            start_flag: Event,
-            ready_flag: Event,
-            abort_flag: Event,
-            ip_address: str = "127.0.0.1",
-            port: int = 53450
-            ):
-        super().__init__(name='SensoGlove')
-        
-        self.save_dir = save_dir / 'glove_data.json'
+        self,
+        ip_address: str,
+        port: int
+    ):
+        self.__ip_address = ip_address
+        self.__port = port
+        self.__connected = False
 
-        self.glove_socket = socket.socket()
-        self.ip_port = (ip_address, port)
+    
+    @property
+    def is_connected(self):
+        return self.__connected
 
-        self.start_flag = start_flag
-        self.ready_flag = ready_flag
-        self.abort_flag = abort_flag
+
+    def connect(self):
+        self.__client = socket.socket()
+        self.__client.settimeout(5)
+
+        try:
+            self.__client.connect((self.__ip_address, self.__port))
+        except BaseException as e:
+            raise SensogloveException(e)
+
+        self.__client.setblocking(True)
+        self.__connected = True
+
+
+    def send_data(self, data):
+        '''You cannot send data to glove'''
+        pass
     
 
-    def __del__(self):
+    def receive_data(self, timeout: int) -> dict | None:
+        ready = select([self.__client], [], [], timeout)
+        if ready[0]:
+            try:
+                return json.loads(self.__client.recv(60000))
+            except json.JSONDecodeError:
+                return None
+        else:
+            return None
+    
+
+    def close_connection(self):
         try:
-            self.close_connection()
+            self.__client.shutdown(socket.SHUT_RDWR)
+            self.__client.close()
         except:
             pass
 
+        self.__connected = False
 
-    def glove_recv(self, timeout: float = 1):
-        self.glove_socket.settimeout(timeout)
 
+    def check_connection(self) -> bool:
         try:
-            data = self.glove_socket.recv(60000)
-            try:
-                return json.loads(data.decode('utf-8'))
-            except json.JSONDecodeError:
-                return data
-            
-        except TimeoutError:
-            raise SensoGloveException('Timeout of data receiving')
-        except Exception as e:
-            return SensoGloveException(str(e))
-    
-
-    def check_app_connection(self):
-        answer = None
-        while not isinstance(answer, dict) or "data" not in answer:
-            answer = self.glove_recv(1)
-
-
-    def make_connect(self):
-        try:
-            self.glove_socket.settimeout(5)
-            self.glove_socket.connect(self.ip_port)
-            self.check_app_connection()
-            self.ready_flag.set()
-            return True
-        except TimeoutError:
-            print(SensoGloveException('Timeout of connection'))
+            self.receive_data(1)
+        except BaseException:
             return False
-    
-
-    def get_data(self):
-        with open(self.save_dir, 'w') as save_file:
-            json.dump({"start_time": time.time()}, save_file)
-            save_file.write('\n')
-            while not self.abort_flag.is_set():
-                    try:     
-                        response = self.glove_recv(1)
-                        if isinstance(response, dict) and "data" in response:
-                            json.dump(response, save_file)
-                            save_file.write('\n')
-                    except SensoGloveException:
-                        continue
-                    except KeyboardInterrupt:
-                        break
-    
-
-    def run(self):
-        try:
-            while not self.start_flag.is_set():
-                continue
-            self.get_data()
-
-        finally:
-            self.close_connection()
-
-    
-    def close_connection(self):
-        self.glove_socket.shutdown(socket.SHUT_RDWR)
-        self.glove_socket.close()
+        
+        return True

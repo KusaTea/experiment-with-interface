@@ -1,4 +1,9 @@
-from .sensoglove_module import AppSensoGloveClient
-from .raw_data_reader import SensoGloveRawDataReader
+from .sensoglove_module import SensogloveModule
+from .sensoglove_data_handler import SensogloveDataHandler
+from .raw_data_reader import SensogloveRawDataReader
 
-__all__ = ['AppSensoGloveClient', 'SensoGloveRawDataReader']
+__all__ = [
+    'SensogloveModule',
+    'SensogloveDataHandler',
+    'SensogloveRawDataReader'
+    ]
