@@ -34,8 +34,9 @@ class TextField(QWidget):
         layout = QVBoxLayout()
 
         layout.setSpacing(5)
-
-        layout.addWidget(QLabel(label_text))
+        
+        self.field_label = QLabel(label_text)
+        layout.addWidget(self.field_label)
         self.field = QLineEdit()
         self.field.setPlaceholderText(field_hint)
         layout.addWidget(self.field)
@@ -47,7 +48,7 @@ class TextField(QWidget):
         self.field.setText(text)
     
 
-    def wipe_text(self):
+    def reset(self):
         self.setFieldText('')
 
 
@@ -71,10 +72,9 @@ class TextField(QWidget):
     
 
     def validate_and_change_style(self):
-        validity = self.validate_data()
-        if validity:
+        if self.validate_data():
             self.make_normal_style()
+            return True
         else:
             self.make_error_style()
-        
-        return validity
+            raise ValueError(f"Incorrect value in field \'{self.field_label}\'")

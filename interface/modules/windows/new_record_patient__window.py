@@ -47,7 +47,15 @@ class PatientInfoWindow(QWidget):
 
 
     def validate_text_fields(self):
-        return self.code_field.validate_and_change_style() and self.age_field.validate_and_change_style()
+        is_valid = True
+        for field in (self.code_field, self.age_field):
+            try:
+                field.validate_and_change_style()
+            except ValueError:
+                is_valid = False
+        
+        return is_valid
+
 
 
     def get_patient_code(self) -> str:
@@ -67,9 +75,20 @@ class PatientInfoWindow(QWidget):
 
 
     def get_patient_info(self) -> list[str]:
-        return [
-            self.get_patient_code(),
-            self.get_patient_age(),
-            self.get_patient_gender(),
-            self.get_patient_hand()
-        ]
+        if self.validate_text_fields():
+            return [
+                self.get_patient_code(),
+                self.get_patient_age(),
+                self.get_patient_gender(),
+                self.get_patient_hand()
+            ]
+        
+        else:
+            raise ValueError('Fields contain incorrect values')
+    
+    
+    def reset(self):
+        self.code_field.reset()
+        self.age_field.reset()
+        self.gender_radio.reset()
+        self.hand_radio.reset()

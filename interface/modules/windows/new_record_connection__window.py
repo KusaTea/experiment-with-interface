@@ -78,3 +78,7 @@ class ConnectionWindow(QWidget):
         self.glove_status.setText(text)
         color = constants.active_color if is_connected else constants.error_color
         self.glove_status.change_text_color(color)
+    
+    def reset(self):
+        self.change_myogragh_status('', False)
+        self.change_glove_status('', False)

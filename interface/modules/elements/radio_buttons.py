@@ -42,3 +42,7 @@ class RadioButtons(QWidget):
                 button_text = button.text()
         
         return button_text
+
+
+    def reset(self):
+        self.buttons[0].setChecked(True)
