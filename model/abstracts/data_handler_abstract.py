@@ -47,6 +47,13 @@ class DataHandlerAbstract(ABC):
 
 
     @abstractmethod
+    def connect_module(self) -> bool:
+        # self.__module.connect()
+        # self.__module.check_connection()
+        pass
+
+
+    @abstractmethod
     def run(self):
         # while not start_flag.is_set()
         #   continue

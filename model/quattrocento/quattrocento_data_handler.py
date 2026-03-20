@@ -63,12 +63,18 @@ class QuattrocentoDataHandler(DataHandlerAbstract, mlp.Process):
             raise ConnectionError('Couldn\'t stop the connection')
 
 
-    def run(self):
+    def connect_module(self) -> bool:
         try:
             self.__module.connect()
+            return self.__module.check_connection()
         except BaseException as e:
             self.__abort_flag.set()
             raise e
+
+
+    def run(self):
+        if not self.__module.is_connected:
+            self.connect_module()
 
         while not self.__start_flag.is_set():
             continue
