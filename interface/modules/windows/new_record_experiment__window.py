@@ -56,3 +56,7 @@ class ExperimentWindow(QWidget):
     def change_exercise(self, new_exercise_name: str, new_exercise_image_dir: PathLike[str]):
         self.exercise_label.setText(new_exercise_name)
         self.exercise_image.setPixmap(QPixmap(new_exercise_image_dir))
+
+    
+    def change_bar_info(self, min_value: int, max_value: int):
+        self.progress_bar.changeMinMaxValues(min_value, max_value)

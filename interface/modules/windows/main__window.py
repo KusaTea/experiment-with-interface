@@ -8,21 +8,24 @@ from ..elements import VerticalLayout, SecondaryButton
 
 class MainWindow(QWidget):
 
-    def __init__(
-            self,
-            new_record_button_function: Callable,
-            settings_button_function: Callable
-            ):
+    def __init__(self):
         super().__init__()
 
         self.new_record_button = SecondaryButton('НОВАЯ ЗАПИСЬ')
-        self.new_record_button.clicked.connect(new_record_button_function)
+        
         
         self.settings_button = SecondaryButton('НАСТРОЙКИ')
-        self.settings_button.clicked.connect(settings_button_function)
 
         layout = VerticalLayout()
         layout.addWidget(self.new_record_button, alignment=(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter))
         layout.addWidget(self.settings_button, alignment=(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter))
 
         self.setLayout(layout)
+    
+
+    def add_callback_for_new_record_button(self, callback: Callable):
+        self.new_record_button.clicked.connect(callback)
+    
+
+    def add_callback_for_settings_button(self, callback: Callable):
+        self.settings_button.clicked.connect(callback)

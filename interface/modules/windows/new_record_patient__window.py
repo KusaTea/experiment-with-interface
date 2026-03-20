@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Literal, Tuple
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout
 
@@ -10,8 +10,6 @@ class PatientInfoWindow(QWidget):
 
     def __init__(
             self,
-            back_button_function: Callable,
-            next_button_function: Callable,
             patient_info_options: PatientInfoOptionsType
             ):
         super().__init__()
@@ -34,11 +32,9 @@ class PatientInfoWindow(QWidget):
         buttons_layout.setSpacing(50)
 
         self.back_button = SecondaryButton('назад')
-        self.back_button.clicked.connect(back_button_function)
         buttons_layout.addWidget(self.back_button)
 
         self.next_button = SecondaryButton('далее')
-        self.next_button.clicked.connect(next_button_function)
         buttons_layout.addWidget(self.next_button)
 
         layout.addLayout(buttons_layout)
@@ -57,6 +53,13 @@ class PatientInfoWindow(QWidget):
         return is_valid
 
 
+    def add_callback_for_back_button(self, callback: Callable):
+        self.back_button.clicked.connect(callback)
+    
+
+    def add_callback_for_next_button(self, callback: Callable):
+        self.next_button.clicked.connect(callback)
+
 
     def get_patient_code(self) -> str:
         return self.code_field.getFieldText()
@@ -66,22 +69,22 @@ class PatientInfoWindow(QWidget):
         return self.age_field.getFieldText()
     
 
-    def get_patient_gender(self) -> str:
+    def get_patient_gender(self) -> Literal['мужской', 'женский']:
         return self.gender_radio.get_selected_option()
         
 
-    def get_patient_hand(self) -> str:
+    def get_patient_hand(self) -> Literal['левая', 'правая']:
         return self.hand_radio.get_selected_option()
 
 
-    def get_patient_info(self) -> list[str]:
+    def get_patient_info(self) -> Tuple[str, str, Literal['мужской', 'женский'], Literal['левая', 'правая']]:
         if self.validate_text_fields():
-            return [
+            return (
                 self.get_patient_code(),
                 self.get_patient_age(),
                 self.get_patient_gender(),
                 self.get_patient_hand()
-            ]
+            )
         
         else:
             raise ValueError('Fields contain incorrect values')

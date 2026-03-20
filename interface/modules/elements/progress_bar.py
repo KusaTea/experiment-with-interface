@@ -35,3 +35,6 @@ class ProgressBar(QProgressBar):
     
     def increase(self, step: int = 1):
         self.setValue(self.value() + step)
+
+    def changeMinMaxValues(self, min_value: int, max_value: int):
+        self.setRange(min_value, max_value)

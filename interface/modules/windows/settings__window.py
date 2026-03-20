@@ -11,8 +11,6 @@ class SettingsWindow(QWidget):
 
     def __init__(
             self,
-            back_button_function: Callable,
-            save_button_function: Callable,
             myograph_settings: ElectromyographSettingsType
             ):
         super().__init__()
@@ -46,10 +44,8 @@ class SettingsWindow(QWidget):
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(50)
         self.back_button = SecondaryButton('назад')
-        self.back_button.clicked.connect(back_button_function)
         buttons_layout.addWidget(self.back_button, alignment=Qt.AlignmentFlag.AlignLeft)
         self.save_button = SecondaryButton('сохранить')
-        self.save_button.clicked.connect(save_button_function)
         buttons_layout.addWidget(self.save_button, alignment=Qt.AlignmentFlag.AlignRight)
         layout.addLayout(buttons_layout)
     
@@ -59,3 +55,11 @@ class SettingsWindow(QWidget):
     def changeValues(self, values: dict[str, str]):
         self.directory_field.setFieldText(values['directory_field'])
         pass
+
+
+    def add_callback_for_back_button(self, callback: Callable):
+        self.back_button.clicked.connect(callback)
+
+    
+    def add_callback_for_save_button(self, callback: Callable):
+        self.save_button.clicked.connect(callback)

@@ -8,10 +8,7 @@ from ..elements import VerticalLayout, SecondaryButton
 
 class FinishWindow(QWidget):
 
-    def __init__(
-            self,
-            main_menu_button_function: Callable
-            ):
+    def __init__(self):
         super().__init__()
 
         layout = VerticalLayout()
@@ -22,10 +19,14 @@ class FinishWindow(QWidget):
         layout.addWidget(self.save_directory_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom))
         
         self.main_menu_button = SecondaryButton('главное меню')
-        self.main_menu_button.clicked.connect(main_menu_button_function)
         layout.addWidget(self.main_menu_button, alignment=Qt.AlignmentFlag.AlignBottom)
 
         self.setLayout(layout)
+
+
+    def add_callback_for_main_menu_button(self, callback: Callable):
+        self.main_menu_button.clicked.connect(callback)
+
 
     def change_save_directory_label(self, directory: str):
         self.save_directory_label.setText('сохраненный файл:\n' + directory)
