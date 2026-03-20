@@ -4,9 +4,9 @@ from typing import Literal
 class DataConverter:
 
     def __init__(self):
-        self.__gender_dict: dict[Literal['мужской', 'жунский'], Literal['m', 'f']] = {
+        self.__gender_dict: dict[Literal['мужской', 'женский'], Literal['m', 'f']] = {
             'мужской': 'm',
-            'жунский': 'f'
+            'женский': 'f'
         }
 
         self.__hand_dict: dict[Literal['левая', 'правая'], Literal['l', 'r']] = {
@@ -15,7 +15,7 @@ class DataConverter:
         }
 
 
-    def convert_gender(self, gender: Literal['мужской', 'жунский']) -> Literal['m', 'f']:
+    def convert_gender(self, gender: Literal['мужской', 'женский']) -> Literal['m', 'f']:
         return self.__gender_dict[gender]
 
 
