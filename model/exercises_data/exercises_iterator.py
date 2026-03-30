@@ -7,6 +7,7 @@ class ExercisesIterator:
         self.exercises_indeces = list(range(1, number_of_exercises)) * repeats_number
         shuffle(self.exercises_indeces)
     
+    
     def __len__(self):
         return len(self.exercises_indeces)
 

@@ -22,10 +22,16 @@ class SensogloveDataHandler(DataHandlerAbstract, mlp.Process):
         self.__start_flag = start_flag
         self.__abort_flag = abort_flag
 
+        self.__is_ready = False
+
 
     @property
     def is_ready(self) -> bool:
-        return self.__module.check_connection()
+        return self.__is_ready
+
+    
+    def __check_module_connection(self):
+        self.__is_ready = self.__module.check_connection()
 
 
     def start_record(self):
@@ -47,12 +53,15 @@ class SensogloveDataHandler(DataHandlerAbstract, mlp.Process):
         
         if self.__module.is_connected:
             raise ConnectionError('Couldn\'t stop the connection')
+
+        self.__is_ready = False
     
 
     def connect_module(self) -> bool:
         try:
             self.__module.connect()
-            return self.__module.check_connection()
+            self.__check_module_connection()
+            return self.__is_ready
         except BaseException as e:
             self.__abort_flag.set()
             raise e

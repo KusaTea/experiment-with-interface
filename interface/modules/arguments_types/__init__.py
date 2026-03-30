@@ -6,11 +6,8 @@ __all__ = [
     'PatientInfoOptionsType',
     'DropDownInfoType',
     'ElectromyographSettingsType',
-    'MainWindowArgumentsType',
     'SettingsWindowArgumentsType',
     'PatientWindowArgumentsType',
-    'ConnectionWindowArgumentsType',
     'ExperimentWindowArgumentsType',
-    'FinishWindowArgumentsType',
     'StackedWindowsArgumentsType'
 ]

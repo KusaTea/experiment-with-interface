@@ -53,6 +53,14 @@ class ExperimentWindow(QWidget):
         self.timer.setText(text)
 
 
+    def change_exercise_name(self, new_exercise_name: str):
+        self.exercise_label.setText(new_exercise_name)
+    
+
+    def change_exercise_image(self, new_exercise_image_dir: PathLike[str]):
+        self.exercise_image.setPixmap(QPixmap(new_exercise_image_dir))
+
+
     def change_exercise(self, new_exercise_name: str, new_exercise_image_dir: PathLike[str]):
         self.exercise_label.setText(new_exercise_name)
         self.exercise_image.setPixmap(QPixmap(new_exercise_image_dir))

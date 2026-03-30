@@ -11,8 +11,14 @@ class MarkupDataCreater:
     def __init__(self, file_dir: Path):
         self.save_file = open(file_dir / 'markup.json', 'w')
     
-    def __del__(self):
+    def close_file(self):
         self.save_file.close()
+
+    def __del__(self):
+        try:
+            self.save_file.close()
+        except:
+            pass
 
     def save_data(self, timestamp: str, exercise: int):
         json.dump({timestamp: exercise}, self.save_file)
@@ -36,9 +42,10 @@ class MarkupDataReader:
                 except:
                     continue
 
-                data += list(line_data.items())
+                data.append(list(line_data.items())[0])
         
         data = np.array(data)
+
         return {
             'timestamps': data[:, 0].astype(np.float32),
             'exercises': data[:, 1].astype(np.int32)

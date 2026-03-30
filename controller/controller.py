@@ -51,28 +51,56 @@ class Controller:
 
         self.__stacked_windows = StackedWindows(stacked_windows_arguments)
 
-
-        # TODO: solve the problem with participant data and raw files dir update
         self.__main_window_controller = MainWindowController(self.__stacked_windows)
+        
         self.__settings_window_controller = SettingsWindowController(self.__stacked_windows)
+        
         self.__participant_info_window_controller = ParticipantInfoWindowController(
             stacked_windows=self.__stacked_windows,
             data_converter=self.__data_converter,
-            save_dir=self.__save_dir
+            save_dir=self.__save_dir,
+            additional_callback_for_next_button = self.__update_dirs_info
         )
+        
         self.__connection_window_controller = ConnectionWindowController(
             stacked_windows=self.__stacked_windows,
             settings=self.__settings,
-            raw_files_dir=self.__participant_info_window_controller.raw_files_dir
+            raw_files_dir=self.__participant_info_window_controller.raw_files_dir,
+            additional_callback_for_start_record=self.__callback_for_start_record
         )
+        
         self.__experiment_window_controller = ExperimentWindowController(
             stacked_windows=self.__stacked_windows,
-            save_dir=self.__participant_info_window_controller.raw_files_dir,
             exercises_file_dir=exercises_file_dir,
-            exercises_images_dir=exercises_images_dir
+            exercises_images_dir=exercises_images_dir,
+            additional_callback_after_record=self.__callback_for_experiment_finish
         )
 
-    
+        self.__finish_window_controller = FinishWindowController(self.__stacked_windows)
+
+
     @property
     def stacked_windows(self):
         return self.__stacked_windows
+    
+
+    def __update_dirs_info(self):
+        self.__connection_window_controller.raw_files_dir = self.__participant_info_window_controller.raw_files_dir
+    
+
+    def __callback_for_start_record(self):
+        self.__experiment_window_controller.create_experiment_thread(self.__participant_info_window_controller.raw_files_dir)
+        self.__experiment_window_controller.start_experiment_thread()
+
+
+    def __callback_for_experiment_finish(self):
+        if not self.__participant_info_window_controller.raw_files_dir:
+            raise ValueError('raw_files_dir is None')
+        
+        self.__connection_window_controller.stop_record()
+
+        self.__finish_window_controller.create_data_merger_thread(
+            self.__participant_info_window_controller.raw_files_dir,
+            self.__participant_info_window_controller.save_file_dir
+        )
+        self.__finish_window_controller.start_finish_thread()

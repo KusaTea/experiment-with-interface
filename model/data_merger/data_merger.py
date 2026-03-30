@@ -9,8 +9,12 @@ class DataMerger:
     def __init__(self, save_dir: Path):
         self.save_dir = save_dir
 
-    def merge_data(self, sensoglove_data: dtpe.SensoGloveDataType, markup_data: dtpe.MarkupDataType):
+    def merge_data(self, emg_data: dtpe.EMGDataType, sensoglove_data: dtpe.SensoGloveDataType, markup_data: dtpe.MarkupDataType):
         with h5py.File(self.save_dir, 'a') as save_file:
+            emg_group = save_file.create_group('emg')
+            emg_group.create_dataset('timestamps', data=emg_data['timestamps'])
+            emg_group.create_dataset('emg', data=emg_data['emg'])
+
             position_group = save_file.create_group('position')
             position_group.attrs['start_timestamp'] = sensoglove_data['start']
             position_group.create_dataset(name='imu', data=sensoglove_data['imu'])

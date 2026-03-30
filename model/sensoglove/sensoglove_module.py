@@ -67,8 +67,8 @@ class SensogloveModule(ModuleAbstract):
 
     def check_connection(self) -> bool:
         try:
-            self.receive_data(1)
+            data = self.receive_data(1)
         except BaseException:
             return False
         
-        return True
+        return not (data == None)

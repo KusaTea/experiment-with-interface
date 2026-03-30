@@ -9,7 +9,7 @@ from interface.modules.arguments_types import PatientInfoOptionsType
 
 current_dir = Path()
 settings_dir = current_dir / 'settings.json'
-exercises_dir = current_dir.parent / 'exercises.json'
+exercises_dir = current_dir / 'exercises.json'
 exercises_images_dir = current_dir / 'images' / 'hands_gestures'
 
 patient_info_options: PatientInfoOptionsType = {
@@ -30,11 +30,9 @@ if __name__=='__main__':
 
     try:
         controller.stacked_windows.show()
-
         sys.exit(app.exec())
     
     except BaseException as e:
-        controller.close_all_connections()
         app.closeAllWindows()
         app.exit()
         raise e
