@@ -144,5 +144,5 @@ class ConnectionWindowController:
     def stop_record(self):
         self.__abort_flag.set()
         self.__start_flag.clear()
-        self.__quattrocento_data_handler.stop_record()
-        self.__sensoglove_data_handler.stop_record()
+        self.__quattrocento_data_handler.join()
+        self.__sensoglove_data_handler.join()
