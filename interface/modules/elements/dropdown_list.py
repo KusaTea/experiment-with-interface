@@ -42,5 +42,11 @@ class DropdownList(QWidget):
 
         self.setLayout(layout)
     
-    def setCurrentOption(self, index: int):
+    def set_current_option_by_index(self, index: int):
         self.dropdown.setCurrentIndex(index)
+    
+    def get_current_option_index(self) -> int:
+        return self.dropdown.currentIndex()
+    
+    def get_current_option(self) -> str:
+        return self.dropdown.currentText()

@@ -72,3 +72,6 @@ class ParticipantInfoWindowController:
     @property
     def save_file_dir(self):
         return self.__save_file_dir
+    
+    def update_save_dir(self, save_dir: Path):
+        self.__save_dir = save_dir
