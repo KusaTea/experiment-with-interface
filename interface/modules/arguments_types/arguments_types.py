@@ -33,6 +33,5 @@ class ExperimentWindowArgumentsType(TypedDict):
 
 
 class StackedWindowsArgumentsType(TypedDict):
-    settings_window_arguments: SettingsWindowArgumentsType
     patient_window_arguments: PatientWindowArgumentsType
     experiment_window_arguments: ExperimentWindowArgumentsType

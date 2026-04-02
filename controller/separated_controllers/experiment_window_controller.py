@@ -24,28 +24,29 @@ class ExperimentWorker(QObject):
             save_dir: Path | None,
             exercises_file_dir: Path,
             exercises_images_dir: Path,
-            repeats_number: int = 5,
-            rest_time_in_s: int = 10,
-            exercise_time_in_s: int = 5,
+            repeats_number: int,
+            rest_time_in_s: int,
+            exercise_time_in_s: int
             ):
         super().__init__()
 
         self.__save_dir = save_dir
 
         self.__exercises_data = ExercisesData(exercises_file_dir, exercises_images_dir)
+        
+        self.__rest_time_in_s = rest_time_in_s
+        self.__exercise_time_in_s = exercise_time_in_s
+        
         self.__exercises_iterator = ExercisesIterator(
             repeats_number=repeats_number,
             number_of_exercises=len(self.__exercises_data) - 2
             )
-        
-        self.__rest_time_in_s = rest_time_in_s
-        self.__exercise_time_in_s = exercise_time_in_s
     
 
     @property
     def number_of_exercises(self) -> int:
         return len(self.__exercises_iterator)
-    
+
 
     def __create_markup_data_creater(self):
         if not self.__save_dir:
@@ -124,9 +125,7 @@ class ExperimentWindowController:
             stacked_windows: StackedWindows,
             exercises_file_dir: Path,
             exercises_images_dir: Path,
-            repeats_number: int = 1,
-            rest_time_in_s: int = 2,
-            exercise_time_in_s: int = 2,
+            experiment_settings: dict,
             additional_callback_after_record: Callable = lambda: None
             ):
         
@@ -137,9 +136,13 @@ class ExperimentWindowController:
 
         self.__exercises_file_dir = exercises_file_dir
         self.__exercises_images_dir = exercises_images_dir
-        self.__repeats_number = repeats_number
-        self.__rest_time_in_s = rest_time_in_s
-        self.__exercise_time_in_s = exercise_time_in_s
+        self.update_experiment_settings(experiment_settings)
+
+    
+    def update_experiment_settings(self, settings: dict):
+        self.__rest_time_in_s = settings['rest_time_in_s']
+        self.__exercise_time_in_s = settings['exercise_time_in_s']
+        self.__repeats_number = settings['repeats_number']
         
 
     def __stop_experiment_thread(self):

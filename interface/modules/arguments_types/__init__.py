@@ -1,4 +1,5 @@
 from .arguments_types import *
+from .settings_tabs_types import *
 
 
 __all__ = [
@@ -9,5 +10,10 @@ __all__ = [
     'SettingsWindowArgumentsType',
     'PatientWindowArgumentsType',
     'ExperimentWindowArgumentsType',
-    'StackedWindowsArgumentsType'
+    'StackedWindowsArgumentsType',
+    'AppSettingsDataType',
+    'GloveSettingsDataType',
+    'ChannelSettingsDataType',
+    'MyographSettingsDataType',
+    'SettingsDataType'
 ]

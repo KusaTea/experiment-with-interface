@@ -78,3 +78,8 @@ class TextField(QWidget):
         else:
             self.make_error_style()
             raise ValueError(f"Incorrect value in field \'{self.field_label}\'")
+    
+
+    def validate_and_get_data(self):
+        self.validate_and_change_style()
+        return self.getFieldText()

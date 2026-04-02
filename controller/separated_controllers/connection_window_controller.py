@@ -65,6 +65,24 @@ class ConnectionWindowController:
         self.__raw_files_dir_changed = True
 
 
+    def update_settings(self, settings: SettingsData):
+        del self.__sensoglove_module
+        self.__sensoglove_module = SensogloveModule(
+            ip_address=settings['glove_settings']['ip'],
+            port=settings['glove_settings']['port']
+        )
+
+        del self.__quattrocento_settings
+        self.__quattrocento_settings = QuattrocentoSettings(settings['myograph_settings']['options'])
+
+        del self.__quattrocento_module
+        self.__quattrocento_module = QuattrocentoModule(
+            ip_address=settings['myograph_settings']['ip'],
+            port=settings['myograph_settings']['port'],
+            buffer_size=self.__quattrocento_settings.buffer_size
+        )
+
+
     def __create_data_handlers(self):
         if not self.__raw_files_dir:
             raise ValueError('raw_files_dir is None')

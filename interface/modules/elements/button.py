@@ -25,13 +25,7 @@ QPushButton:focus {{
 QPushButton:pressed {{
     background-color: {active_color};
 }}
-'''.format(
-    background_color=constants.primary_color,
-    text_color=constants.text_color,
-    hover_color=constants.hover_color,
-    outline_color=constants.outline_color,
-    active_color=constants.active_color
-)
+'''
 
 _secondary_style = '''
 QPushButton {{
@@ -71,12 +65,42 @@ class PrimaryButton(QPushButton):
     def __init__(self, text):
         super().__init__(text)
 
-        self.setStyleSheet(_primary_style)
+        self.setStyleSheet(
+            _primary_style.format(
+                background_color=constants.primary_color,
+                text_color=constants.text_color,
+                hover_color=constants.hover_color,
+                outline_color=constants.outline_color,
+                active_color=constants.active_color
+                )
+            )
 
         text_width = QFontMetrics(self.font()).horizontalAdvance(text)
         
         self.setMinimumSize(max(100, text_width + 30), 50)
         self.setMaximumSize(max(250, text_width + 30), 100)
+    
+    def set_error_style(self):
+        self.setStyleSheet(
+            _primary_style.format(
+                background_color=constants.error_color,
+                text_color=constants.text_color,
+                hover_color=constants.hover_color,
+                outline_color=constants.outline_color,
+                active_color=constants.active_color
+                )
+            )
+    
+    def set_normal_style(self):
+        self.setStyleSheet(
+            _primary_style.format(
+                background_color=constants.primary_color,
+                text_color=constants.text_color,
+                hover_color=constants.hover_color,
+                outline_color=constants.outline_color,
+                active_color=constants.active_color
+                )
+            )
 
 
 class SecondaryButton(PrimaryButton):

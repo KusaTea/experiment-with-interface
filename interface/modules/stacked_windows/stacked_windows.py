@@ -19,14 +19,13 @@ class StackedWindows(QStackedWidget):
 
     def insert_all_windows(
             self,
-            settings_window_arguments: SettingsWindowArgumentsType,
             patient_window_arguments: PatientWindowArgumentsType,
             experiment_window_arguments: ExperimentWindowArgumentsType,
             ):
         self.main_window = MainWindow()
         self.insertWidget(0, self.main_window)
         
-        self.settings_window = SettingsWindow(**settings_window_arguments)
+        self.settings_window = SettingsWindow()
         self.insertWidget(1, self.settings_window)
         
         self.patient_window = PatientInfoWindow(**patient_window_arguments)

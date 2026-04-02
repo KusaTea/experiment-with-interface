@@ -29,11 +29,6 @@ class Controller:
         self.__save_dir = Path(self.__settings['save_directory'])
         if not os.path.exists(self.__save_dir):
             os.makedirs(self.__save_dir)
-
-        
-        settings_window_arguments: SettingsWindowArgumentsType = {
-                'myograph_settings': self.__settings['myograph_settings']['options']
-            }
         
         patient_window_arguments: PatientWindowArgumentsType = {
                 'patient_info_options': patient_info_options
@@ -44,7 +39,6 @@ class Controller:
         }
 
         stacked_windows_arguments: StackedWindowsArgumentsType = {
-            'settings_window_arguments': settings_window_arguments,
             'patient_window_arguments': patient_window_arguments,
             'experiment_window_arguments': experiment_window_arguments
         }
@@ -53,7 +47,11 @@ class Controller:
 
         self.__main_window_controller = MainWindowController(self.__stacked_windows)
         
-        self.__settings_window_controller = SettingsWindowController(self.__stacked_windows)
+        self.__settings_window_controller = SettingsWindowController(
+            self.__stacked_windows,
+            settings=self.__settings,
+            additional_callback_for_save_button=self.__update_settings
+            )
         
         self.__participant_info_window_controller = ParticipantInfoWindowController(
             stacked_windows=self.__stacked_windows,
@@ -73,7 +71,8 @@ class Controller:
             stacked_windows=self.__stacked_windows,
             exercises_file_dir=exercises_file_dir,
             exercises_images_dir=exercises_images_dir,
-            additional_callback_after_record=self.__callback_for_experiment_finish
+            experiment_settings=self.__settings['experiment_settings'],
+            additional_callback_after_record=self.__callback_for_experiment_finish,
         )
 
         self.__finish_window_controller = FinishWindowController(self.__stacked_windows)
@@ -104,3 +103,16 @@ class Controller:
             self.__participant_info_window_controller.save_file_dir
         )
         self.__finish_window_controller.start_finish_thread()
+    
+
+    def __update_settings(self, new_settings):
+        self.__settings.update_settings(new_settings)
+
+        self.__save_dir = Path(self.__settings['save_directory'])
+        if not os.path.exists(self.__save_dir):
+            os.makedirs(self.__save_dir)
+
+        self.__participant_info_window_controller.update_save_dir(self.__save_dir)
+        
+        self.__connection_window_controller.update_settings(self.__settings)
+        self.__experiment_window_controller.update_experiment_settings(self.__settings['experiment_settings'])
