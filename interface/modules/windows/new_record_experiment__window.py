@@ -4,8 +4,9 @@ from PySide6.QtWidgets import QWidget, QLabel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 
-from ..elements import VerticalLayout, ProgressBar
+from ..elements import VerticalLayout, ProgressBar, Label
 from ..arguments_types import BarInfoType
+from ..constants import constants
 
 
 class ExperimentWindow(QWidget):
@@ -26,7 +27,7 @@ class ExperimentWindow(QWidget):
         self.progress_bar.setMinimumWidth(500)
         layout.addWidget(self.progress_bar, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop))
 
-        self.event_label = QLabel('')
+        self.event_label = Label('')
         layout.addWidget(self.event_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
 
         self.timer = QLabel('')
@@ -45,8 +46,16 @@ class ExperimentWindow(QWidget):
         self.progress_bar.increase(step)
 
 
-    def change_event(self, text: str):
+    def change_event_text(self, text: str):
         self.event_label.setText(text)
+
+
+    def change_event_text_color_to_green(self):
+        self.event_label.change_text_color(constants.primary_color)
+
+
+    def change_event_text_color_to_orange(self):
+        self.event_label.change_text_color(constants.orange_color)
 
 
     def change_timer(self, text: str):
