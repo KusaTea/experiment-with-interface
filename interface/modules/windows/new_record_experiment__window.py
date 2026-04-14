@@ -1,20 +1,30 @@
 from os import PathLike
 
-from PySide6.QtWidgets import QWidget, QLabel
+from PySide6.QtWidgets import QWidget, QLabel, QMainWindow
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 
-from ..elements import VerticalLayout, ProgressBar
+from ..elements import VerticalLayout, ProgressBar, Label
 from ..arguments_types import BarInfoType
+from ..constants import constants
 
 
-class ExperimentWindow(QWidget):
+_style = '''
+    QMainWindow {{
+        border-image: {image_dir};
+    }}
+'''
+
+
+class ExperimentWindow(QMainWindow):
 
     def __init__(
             self,
             bar_info: BarInfoType
             ):
         super().__init__()
+
+        central_widget = QWidget()
 
         layout = VerticalLayout()
 
@@ -26,7 +36,7 @@ class ExperimentWindow(QWidget):
         self.progress_bar.setMinimumWidth(500)
         layout.addWidget(self.progress_bar, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop))
 
-        self.event_label = QLabel('')
+        self.event_label = Label('')
         layout.addWidget(self.event_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
 
         self.timer = QLabel('')
@@ -38,15 +48,25 @@ class ExperimentWindow(QWidget):
         self.exercise_image = QLabel('')
         layout.addWidget(self.exercise_image, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
 
-        self.setLayout(layout)
+        central_widget.setLayout(layout)
+
+        self.setCentralWidget(central_widget)
     
 
     def change_progress(self, step: int = 1):
         self.progress_bar.increase(step)
 
 
-    def change_event(self, text: str):
+    def change_event_text(self, text: str):
         self.event_label.setText(text)
+
+
+    def change_event_text_color_to_green(self):
+        self.event_label.change_text_color(constants.primary_color)
+
+
+    def change_event_text_color_to_orange(self):
+        self.event_label.change_text_color(constants.orange_color)
 
 
     def change_timer(self, text: str):
@@ -68,3 +88,11 @@ class ExperimentWindow(QWidget):
     
     def change_bar_info(self, min_value: int, max_value: int):
         self.progress_bar.changeMinMaxValues(min_value, max_value)
+
+    
+    def remove_background_image(self):
+        self.setStyleSheet(_style.format(image_dir='none'))
+    
+
+    def change_background_image(self, image_dir: str):
+        self.setStyleSheet(_style.format(image_dir=f'url(\"{image_dir}\")'))

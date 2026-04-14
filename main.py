@@ -11,6 +11,7 @@ current_dir = Path()
 settings_dir = current_dir / 'settings.json'
 exercises_dir = current_dir / 'exercises.json'
 exercises_images_dir = current_dir / 'images' / 'hands_gestures'
+experimet_background_image_dir = current_dir / 'images' / 'experiment_background.png'
 
 patient_info_options: PatientInfoOptionsType = {
     'gender_options': ['мужской', 'женский'],
@@ -25,7 +26,8 @@ if __name__=='__main__':
         settings_dir=settings_dir,
         patient_info_options=patient_info_options,
         exercises_file_dir=exercises_dir,
-        exercises_images_dir=exercises_images_dir
+        exercises_images_dir=exercises_images_dir,
+        experimet_background_image_dir=experimet_background_image_dir
     )
 
     try:

@@ -19,7 +19,8 @@ class Controller:
             settings_dir: Path,
             patient_info_options: PatientInfoOptionsType,
             exercises_file_dir: Path,
-            exercises_images_dir: Path
+            exercises_images_dir: Path,
+            experimet_background_image_dir: Path
             ):
 
         self.__data_converter = DataConverter()
@@ -72,6 +73,7 @@ class Controller:
             exercises_file_dir=exercises_file_dir,
             exercises_images_dir=exercises_images_dir,
             experiment_settings=self.__settings['experiment_settings'],
+            background_image_dir=experimet_background_image_dir,
             additional_callback_after_record=self.__callback_for_experiment_finish,
         )
 

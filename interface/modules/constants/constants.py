@@ -12,3 +12,5 @@ border_color = '#ffffff'
 transparent = '#00000000'
 
 error_color = "#FF3131"
+
+orange_color = "#FFD260"
