@@ -134,6 +134,7 @@ class ExperimentWindowController:
             exercises_file_dir: Path,
             exercises_images_dir: Path,
             experiment_settings: dict,
+            background_image_dir: Path,
             additional_callback_after_record: Callable = lambda: None
             ):
         
@@ -145,6 +146,8 @@ class ExperimentWindowController:
         self.__exercises_file_dir = exercises_file_dir
         self.__exercises_images_dir = exercises_images_dir
         self.update_experiment_settings(experiment_settings)
+
+        self.__background_image_dir = str(background_image_dir.absolute()).replace('\\', '/')
 
     
     def update_experiment_settings(self, settings: dict):
@@ -178,7 +181,9 @@ class ExperimentWindowController:
         self.__experiment_worker.increase_progress.connect(self.__experiment_window.change_progress)
         self.__experiment_worker.current_event.connect(self.__experiment_window.change_event_text)
         self.__experiment_worker.event_green_color.connect(self.__experiment_window.change_event_text_color_to_green)
+        self.__experiment_worker.event_green_color.connect(lambda: self.__experiment_window.change_background_image(self.__background_image_dir))
         self.__experiment_worker.event_orange_color.connect(self.__experiment_window.change_event_text_color_to_orange)
+        self.__experiment_worker.event_orange_color.connect(self.__experiment_window.remove_background_image)
         self.__experiment_worker.current_exercise_name.connect(self.__experiment_window.change_exercise_name)
         self.__experiment_worker.current_exercise_image_dir.connect(self.__experiment_window.change_exercise_image)
         self.__experiment_worker.timer_value.connect(self.__experiment_window.change_timer)
