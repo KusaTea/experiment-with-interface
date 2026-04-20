@@ -9,13 +9,6 @@ from ..arguments_types import BarInfoType
 from ..constants import constants
 
 
-_style = '''
-    QMainWindow {{
-        border-image: {image_dir};
-    }}
-'''
-
-
 class ExperimentWindow(QMainWindow):
 
     def __init__(
@@ -51,6 +44,10 @@ class ExperimentWindow(QMainWindow):
         central_widget.setLayout(layout)
 
         self.setCentralWidget(central_widget)
+
+        self.__background_label = QLabel(self)
+        self.__background_label.resize(2000, 2000)
+        self.__background_label.lower()
     
 
     def change_progress(self, step: int = 1):
@@ -89,10 +86,15 @@ class ExperimentWindow(QMainWindow):
     def change_bar_info(self, min_value: int, max_value: int):
         self.progress_bar.changeMinMaxValues(min_value, max_value)
 
+
+    def set_background_image_dir(self, image_dir: str):
+        self.__background_image = QPixmap(image_dir)
+
     
     def remove_background_image(self):
-        self.setStyleSheet(_style.format(image_dir='none'))
+        self.__background_label.clear()
+        
     
 
-    def change_background_image(self, image_dir: str):
-        self.setStyleSheet(_style.format(image_dir=f'url(\"{image_dir}\")'))
+    def change_background_image(self):
+        self.__background_label.setPixmap(self.__background_image)
