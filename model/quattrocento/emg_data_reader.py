@@ -15,7 +15,7 @@ class EMGDataReader:
         self.__hdf_file = h5py.File(self.__data_dir, 'r')
         self.__num_of_channels = self.__hdf_file.attrs['num_of_channels']
         self.__sampling_rate = self.__hdf_file.attrs['sampling_rate']
-        self.__mV_constant = self.__hdf_file.attrs['sampling_rate']
+        self.__mV_constant = self.__hdf_file.attrs['mV_constant']
         self.__keys = list(self.__hdf_file.keys())
 
         self.__iter_counter = 0
@@ -36,7 +36,7 @@ class EMGDataReader:
     def __next__(self):
         if self.__iter_counter < len(self):
             ts = self.__keys[self.__iter_counter]
-            return float(ts), np.array(self.__hdf_file.get(ts)).reshape(self.__sampling_rate, self.__num_of_channels) * self.__mV_constant
+            return float(ts), np.array(self.__hdf_file.get(ts)).reshape(self.__sampling_rate, self.__num_of_channels)
         
         else:
             raise StopIteration
@@ -56,7 +56,7 @@ class EMGDataReader:
     def get_all_emg_data(self):
         data = list()
         for ts in self.__hdf_file.keys():
-            emg_data = np.array(self.__hdf_file.get(ts)).reshape(self.__sampling_rate, self.__num_of_channels) * self.__mV_constant
+            emg_data = np.array(self.__hdf_file.get(ts)).reshape(self.__sampling_rate, self.__num_of_channels)
 
             data.append(emg_data)
 
@@ -66,5 +66,11 @@ class EMGDataReader:
     def get_emg_data(self) -> EMGDataType:
         return {
             'timestamps': self.get_all_timestamps(),
-            'emg': self.get_all_emg_data()
+            'emg': self.get_all_emg_data(),
+            'mV_constant': self.__mV_constant
             }
+
+
+    @property
+    def mV_constant(self) -> int:
+        return self.__mV_constant

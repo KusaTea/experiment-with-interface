@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 class EMGDataType(TypedDict):
     emg: NDArray
     timestamps: NDArray
+    mV_constant: float
 
 
 class SensoGloveDataType(TypedDict):

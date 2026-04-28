@@ -39,6 +39,7 @@ class ExperimentWindow(QMainWindow):
         layout.addWidget(self.exercise_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
         
         self.exercise_image = QLabel('')
+        self.exercise_image.resize(400, 400)
         layout.addWidget(self.exercise_image, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
 
         central_widget.setLayout(layout)

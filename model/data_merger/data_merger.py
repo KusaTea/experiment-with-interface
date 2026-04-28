@@ -12,6 +12,7 @@ class DataMerger:
     def merge_data(self, emg_data: dtpe.EMGDataType, sensoglove_data: dtpe.SensoGloveDataType, markup_data: dtpe.MarkupDataType):
         with h5py.File(self.save_dir, 'a') as save_file:
             emg_group = save_file.create_group('emg')
+            emg_group.attrs['mV_constant'] = emg_data['mV_constant']
             emg_group.create_dataset('timestamps', data=emg_data['timestamps'])
             emg_group.create_dataset('emg', data=emg_data['emg'])
 
