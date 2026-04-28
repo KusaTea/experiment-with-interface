@@ -55,8 +55,11 @@ class SensogloveRawDataReader:
         return np.array(data, dtype=np.float32)
     
     @staticmethod
-    def __transform_bones_data(bones_data: dict):
-        data = [bones_data[f'bone_{num}'] for num in range(0, 16)]
+    def __transform_bones_data(bones_data: dict | list):
+        if isinstance(bones_data, dict):
+            data = [bones_data[f'bone_{num}'] for num in range(0, 16)]
+        else:
+            data = [bones_data[start: start + 4] for start in range(0, len(bones_data), 4)]
         return np.array(data, dtype=np.float32)
     
     @staticmethod
