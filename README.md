@@ -1,27 +1,32 @@
-### Database structure description
+# GUI for experiment
 
-#### An HDF5 file contains the following attributes:
-- `participant_code`
-- `participant_age`
-- `participant_gender`
-- `participant_leading_hand`
-- `date`
+This project creates GUI for database creation experiment. Database contains high-density sEMG and hand position described by quaternions.
 
-#### File's groups:
-- `emg` - EMG data arrays
-- `position` - data from the glove
-- `markup` - arrays with numbers of gestures
+## Features
 
-#### EMG group keys:
-- `emg` - data arrays
-- `timestamps`
+- Real-time high-density sEMG and 3D hand position synchronous data acquisition
 
-#### Position group keys:
-- `imu` - raw data from sensors
-- `bones` - quaternions of separated fingers bones
-- `fingers` - quaternions of separated fingers
-- `timestamps`
+## Technologies
 
-#### Markup group keys:
-- `exercises`
-- `timestamps`
+- Python
+- PySide6
+- NumPy
+- h5py
+
+## System requiremets
+
+Windows 10/11
+
+## Installation
+
+1. Download and install SensoGlove DK3 software ([link](https://files.senso.me/install/))
+2. Install python packages:
+```bash
+pip install -r requirements.txt
+```
+
+## Run
+
+```bash
+python -m app.main
+```
