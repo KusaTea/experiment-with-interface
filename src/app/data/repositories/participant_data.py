@@ -22,7 +22,7 @@ class ParticipantData:
         if not os.path.exists(save_dir / (str(self.code) + '.hdf5')):
             with h5py.File(save_dir / (str(self.code) + '.hdf5'), 'w') as save_file:
                 save_file.attrs['participant_code'] = self.code
-                save_file.attrs['participant_age'] = self.code
+                save_file.attrs['participant_age'] = self.age
                 save_file.attrs['participant_gender'] = self.gender
                 save_file.attrs['participant_leading_hand'] = self.hand
                 save_file.attrs['date'] = str(datetime.now())
