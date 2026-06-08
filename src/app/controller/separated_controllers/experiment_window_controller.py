@@ -33,7 +33,10 @@ class ExperimentWorker(QObject):
         self.__dirs_store = dirs_store
         self.__settings = settings
 
-        self.__exercises_data = ExercisesData(self.__dirs_store.exercises_dir)
+        self.__exercises_data = ExercisesData(
+            self.__dirs_store.exercises_dir,
+            self.__dirs_store.exercises_images_dir
+            )
         
         self.__exercises_iterator = ExercisesIterator(
             repeats_number=self.__settings['experiment_settings']['repeats_number'],
@@ -151,7 +154,7 @@ class ExperimentWindowController(QObject):
 
         self.__settings = settings
 
-        self.__create_experiment_thread
+        self.__create_experiment_thread()
 
         self.__backgrounds_images = [
             QPixmap(image_dir) for image_dir in self.__dirs_store.background_image_dir
