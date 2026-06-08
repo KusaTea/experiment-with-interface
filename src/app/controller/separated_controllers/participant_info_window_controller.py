@@ -50,7 +50,7 @@ class ParticipantInfoWindowController(QObject):
                 )
             self.__participant_data.save_participant_info(self.__dirs_store.data_main_dir)
             self.__make_raw_data_folder(code)
-            self.__dirs_store.ready_data_dir(self.__dirs_store.data_main_dir / (code + '.hdf5'))
+            self.__dirs_store.ready_data_dir = self.__dirs_store.data_main_dir / (code + '.hdf5')
             self.__participant_info_window.reset()
 
             self.next_button_pushed.emit()
@@ -64,9 +64,9 @@ class ParticipantInfoWindowController(QObject):
     
 
     def __make_raw_data_folder(self, code: str):
-        self.__dirs_store.raw_data_dir(self.__dirs_store.data_main_dir / 'raw' / code)
-        if not os.path.exists(self.__raw_files_dir):
-            os.makedirs(self.__raw_files_dir)
+        self.__dirs_store.raw_data_dir = self.__dirs_store.data_main_dir / 'raw' / code
+        if not os.path.exists(self.__dirs_store.raw_data_dir):
+            os.makedirs(self.__dirs_store.raw_data_dir)
 
     
     def __finish(self):

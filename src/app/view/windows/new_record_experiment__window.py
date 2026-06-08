@@ -47,7 +47,7 @@ class ExperimentWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         self.__background_label = QLabel(self)
-        self.__background_label.resize(2000, 2000)
+        self.__background_label.resize(3840, 2160)
         self.__background_label.lower()
     
 
