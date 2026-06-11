@@ -1,5 +1,5 @@
 from pathlib import Path
-from sys import sys
+import sys
 
 from verify_record_data import RecordDataVerification
 
