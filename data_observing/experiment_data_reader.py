@@ -2,8 +2,33 @@ from pathlib import Path
 from typing import Any
 
 import h5py
-import numpy as np
 from numpy.typing import NDArray
+
+
+class DataReader:
+    def __init__(self, timestamps: h5py.Dataset, values: h5py.Dataset):
+        self.timestamps = timestamps
+        self.values = values
+
+    @property
+    def shape(self):
+        return self.values.shape
+
+    def __len__(self):
+        return self.values.shape[0]
+
+    def __getitem__(self, data_slice) -> tuple[NDArray, NDArray]:
+        return self.timestamps[data_slice], self.values[data_slice]
+
+
+class EMGDataReader(DataReader):
+    def __init__(self, timestamps: h5py.Dataset, values: h5py.Dataset, mV_constant: float):
+        super().__init__(timestamps, values)
+        self.mV_constant = mV_constant
+
+    def __getitem__(self, data_slice) -> tuple[NDArray, NDArray]:
+        timestamps, values = super().__getitem__(data_slice)
+        return timestamps, values * self.mV_constant
 
 
 class ExperimentDataReader:
@@ -50,31 +75,29 @@ class ExperimentDataReader:
             if attr_name in self._file.attrs
         }
 
-    def get_emg_data(self, data_slice: slice = slice(None)) -> tuple[NDArray, NDArray]:
-        timestamps, emg = self._get_group_data("emg", "emg", data_slice)
-        mV_constant = self._file["emg"].attrs["mV_constant"]
-        return timestamps, emg * mV_constant
+    def get_emg_data(self) -> EMGDataReader:
+        group = self._file["emg"]
+        return EMGDataReader(group["timestamps"], group["emg"], group.attrs["mV_constant"])
 
-    def get_markup_data(self, data_slice: slice = slice(None)) -> tuple[NDArray, NDArray]:
-        return self._get_group_data("markup", "exercises", data_slice)
+    def get_markup_data(self) -> DataReader:
+        return self._get_group_reader("markup", "exercises")
 
-    def get_imu_data(self, data_slice: slice = slice(None)) -> tuple[NDArray, NDArray]:
-        return self._get_group_data("position", "imu", data_slice)
+    def get_imu_data(self) -> DataReader:
+        return self._get_group_reader("position", "imu")
 
-    def get_hand_quaternions(self, data_slice: slice = slice(None)) -> tuple[NDArray, NDArray]:
-        return self._get_group_data("position", "fingers", data_slice)
+    def get_hand_quaternions(self) -> DataReader:
+        return self._get_group_reader("position", "fingers")
 
-    def get_bones_quaternions(self, data_slice: slice = slice(None)) -> tuple[NDArray, NDArray]:
-        return self._get_group_data("position", "bones", data_slice)
+    def get_bones_quaternions(self) -> DataReader:
+        return self._get_group_reader("position", "bones")
 
-    def _get_group_data(
+    def _get_group_reader(
         self,
         group_name: str,
-        data_name: str,
-        data_slice: slice,
-    ) -> tuple[NDArray, NDArray]:
+        values_name: str,
+    ) -> DataReader:
         group = self._file[group_name]
-        return np.array(group["timestamps"][data_slice]), np.array(group[data_name][data_slice])
+        return DataReader(group["timestamps"], group[values_name])
 
     @staticmethod
     def _decode_value(value):

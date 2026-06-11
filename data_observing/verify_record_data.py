@@ -40,8 +40,8 @@ class RecordDataVerification:
         print(f"- leading hand: {participant_info.get('participant_leading_hand')}")
 
     def record_length(self):
-        _, emg_data = self.reader.get_emg_data()
-        duration_in_seconds = int(emg_data.shape[0])
+        emg_reader = self.reader.get_emg_data()
+        duration_in_seconds = int(emg_reader.shape[0])
 
         title = "RECORD LENGTH"
         self._print_title(title)
@@ -91,40 +91,42 @@ class RecordDataVerification:
         plt.close()
 
     def emg_n_channels(self):
-        _, emg_data = self.reader.get_emg_data()
-        number_of_channels = emg_data.shape[-1]
+        emg_reader = self.reader.get_emg_data()
+        number_of_channels = emg_reader.shape[-1]
 
         title = "NUMBER OF EMG CHANNELS"
         self._print_title(title)
         print(number_of_channels)
 
     def plot_emg_data(self):
-        _, emg_data = self.reader.get_emg_data()
+        emg_reader = self.reader.get_emg_data()
         participant_code = self.reader.get_participant_info().get("participant_code")
         save_dir = Path("../verification_data") / str(participant_code) / "emg_data"
         save_dir.mkdir(parents=True, exist_ok=True)
 
-        calibration_data = self._flatten_emg_interval(emg_data, 0, 30)
+        _, calibration_interval = emg_reader[0:30]
+        calibration_data = self._flatten_emg_interval(calibration_interval)
         self._plot_emg_interval_figures(calibration_data, save_dir, "calibration")
 
-        for picture_idx, start_second in enumerate(self._random_starts(emg_data.shape[0], 30, 6), start=1):
-            interval_data = self._flatten_emg_interval(emg_data, start_second, 30)
+        for picture_idx, start_second in enumerate(self._random_starts(emg_reader.shape[0], 30, 6), start=1):
+            _, interval = emg_reader[start_second:start_second + 30]
+            interval_data = self._flatten_emg_interval(interval)
             self._plot_emg_interval_figures(interval_data, save_dir, str(picture_idx))
 
     def plot_imu_data(self):
-        timestamps, imu_data = self.reader.get_imu_data()
+        imu_reader = self.reader.get_imu_data()
         participant_code = self.reader.get_participant_info().get("participant_code")
         save_dir = Path("../verification_data") / str(participant_code) / "imu_data"
         save_dir.mkdir(parents=True, exist_ok=True)
 
-        timestamps = self._normalize_timestamps_for_data(timestamps, imu_data)
+        timestamps = self._get_reader_timestamps_in_seconds(imu_reader)
 
-        calibration_data = self._slice_data_by_seconds(timestamps, imu_data, 0, 30)
+        calibration_data = self._slice_reader_by_seconds(imu_reader, timestamps, 0, 30)
         self._plot_imu_grid(calibration_data, save_dir / "calibration.png")
 
         max_duration = int(timestamps[-1] - timestamps[0]) if timestamps.size else 0
         for picture_idx, start_second in enumerate(self._random_starts(max_duration, 60, 6), start=1):
-            interval_data = self._slice_data_by_seconds(timestamps, imu_data, start_second, 60)
+            interval_data = self._slice_reader_by_seconds(imu_reader, timestamps, start_second, 60)
             self._plot_imu_grid(interval_data, save_dir / f"{picture_idx}.png")
 
     @staticmethod
@@ -140,20 +142,23 @@ class RecordDataVerification:
         return f"{hours:02}:{minutes:02}:{seconds:02}"
 
     def _get_glove_timestamps_in_seconds(self):
-        timestamps, _ = self.reader.get_hand_quaternions()
-        timestamps = np.asarray(timestamps, dtype=np.float64)
+        return self._get_reader_timestamps_in_seconds(self.reader.get_hand_quaternions())
+
+    @staticmethod
+    def _get_reader_timestamps_in_seconds(data_reader):
+        timestamps = np.asarray(data_reader.timestamps[:], dtype=np.float64)
 
         if timestamps.size < 2:
             return timestamps
 
         # SensoGlove timestamps are stored in milliseconds in the raw reader.
-        return timestamps / 1000
+        timestamps = timestamps / 1000
+        return timestamps - timestamps[0]
 
     @staticmethod
-    def _flatten_emg_interval(emg_data, start_second: int, duration_in_seconds: int):
-        interval = emg_data[start_second:start_second + duration_in_seconds]
+    def _flatten_emg_interval(interval):
         if interval.size == 0:
-            return np.empty((0, emg_data.shape[-1]))
+            return np.empty((0, interval.shape[-1] if interval.ndim else 0))
         return interval.reshape(-1, interval.shape[-1])
 
     @staticmethod
@@ -249,28 +254,16 @@ class RecordDataVerification:
         plt.close(fig)
 
     @staticmethod
-    def _normalize_timestamps_for_data(timestamps, data):
-        timestamps = np.asarray(timestamps, dtype=np.float64)
-        data = np.asarray(data)
-
-        if timestamps.size != data.shape[0]:
-            return np.arange(data.shape[0], dtype=np.float64)
-
-        if timestamps.size < 2:
-            return timestamps
-
-        timestamps = timestamps / 1000
-        return timestamps - timestamps[0]
-
-    @staticmethod
-    def _slice_data_by_seconds(timestamps, data, start_second: int, duration_in_seconds: int):
+    def _slice_reader_by_seconds(data_reader, timestamps, start_second: int, duration_in_seconds: int):
         if timestamps.size == 0:
-            return data[:0]
+            return data_reader.values[:0]
 
         start = timestamps[0] + start_second
         end = start + duration_in_seconds
-        mask = (timestamps >= start) & (timestamps < end)
-        return data[mask]
+        start_idx = int(np.searchsorted(timestamps, start, side="left"))
+        end_idx = int(np.searchsorted(timestamps, end, side="left"))
+        _, data = data_reader[start_idx:end_idx]
+        return data
 
 
 if __name__=='__main__':
