@@ -98,13 +98,12 @@ class RecordDataVerification:
         save_dir = Path("../verification_data") / str(participant_code) / "emg_data"
         save_dir.mkdir(parents=True, exist_ok=True)
 
-        selected_channels = emg_data[:, :, 64:192]
-        calibration_data = self._flatten_emg_interval(selected_channels, 0, 30)
-        self._plot_channels_grid(calibration_data, save_dir / "calibration.png", first_channel_number=65)
+        calibration_data = self._flatten_emg_interval(emg_data, 0, 30)
+        self._plot_emg_interval_figures(calibration_data, save_dir, "calibration")
 
         for picture_idx, start_second in enumerate(self._random_starts(emg_data.shape[0], 30, 6), start=1):
-            interval_data = self._flatten_emg_interval(selected_channels, start_second, 30)
-            self._plot_channels_grid(interval_data, save_dir / f"{picture_idx}.png", first_channel_number=65)
+            interval_data = self._flatten_emg_interval(emg_data, start_second, 30)
+            self._plot_emg_interval_figures(interval_data, save_dir, str(picture_idx))
 
     def plot_imu_data(self):
         timestamps, imu_data = self.reader.get_imu_data()
@@ -115,12 +114,12 @@ class RecordDataVerification:
         timestamps = self._normalize_timestamps_for_data(timestamps, imu_data)
 
         calibration_data = self._slice_data_by_seconds(timestamps, imu_data, 0, 30)
-        self._plot_channels_grid(calibration_data, save_dir / "calibration.png")
+        self._plot_imu_grid(calibration_data, save_dir / "calibration.png")
 
         max_duration = int(timestamps[-1] - timestamps[0]) if timestamps.size else 0
         for picture_idx, start_second in enumerate(self._random_starts(max_duration, 60, 6), start=1):
             interval_data = self._slice_data_by_seconds(timestamps, imu_data, start_second, 60)
-            self._plot_channels_grid(interval_data, save_dir / f"{picture_idx}.png")
+            self._plot_imu_grid(interval_data, save_dir / f"{picture_idx}.png")
 
     @staticmethod
     def _print_title(title: str):
@@ -160,8 +159,45 @@ class RecordDataVerification:
         rng = np.random.default_rng()
         return [int(value) for value in rng.integers(0, max_start + 1, size=number_of_intervals)]
 
+    def _plot_emg_interval_figures(self, data, save_dir: Path, picture_prefix: str):
+        number_of_channels = data.shape[-1] if data.ndim >= 2 else 0
+        if number_of_channels == 0:
+            self._plot_channels_grid(data, save_dir / f"{picture_prefix}_last_24.png", rows=4, columns=6)
+            return
+
+        last_channels_start = max(number_of_channels - 24, 0)
+        last_channels = data[:, last_channels_start:number_of_channels]
+        self._plot_channels_grid(
+            last_channels,
+            save_dir / f"{picture_prefix}_last_24.png",
+            first_channel_number=last_channels_start + 1,
+            rows=4,
+            columns=6,
+        )
+
+        remaining_channels_end = last_channels_start
+        figure_idx = 1
+        while remaining_channels_end > 0:
+            channels_start = max(remaining_channels_end - 64, 0)
+            channels = data[:, channels_start:remaining_channels_end]
+            self._plot_channels_grid(
+                channels,
+                save_dir / f"{picture_prefix}_{figure_idx}.png",
+                first_channel_number=channels_start + 1,
+                rows=8,
+                columns=8,
+            )
+            remaining_channels_end = channels_start
+            figure_idx += 1
+
     @staticmethod
-    def _plot_channels_grid(data, save_path: Path, first_channel_number: int = 1):
+    def _plot_channels_grid(
+        data,
+        save_path: Path,
+        first_channel_number: int = 1,
+        rows: int = 13,
+        columns: int = 10,
+    ):
         import matplotlib.pyplot as plt
 
         data = np.asarray(data)
@@ -170,7 +206,7 @@ class RecordDataVerification:
         elif data.ndim > 2:
             data = data.reshape(data.shape[0], -1)
 
-        fig, axes = plt.subplots(13, 10, figsize=(26, 20), sharex=True)
+        fig, axes = plt.subplots(rows, columns, figsize=(columns * 3, rows * 2.5), sharex=True)
         axes = axes.ravel()
 
         number_of_channels = data.shape[1] if data.size else 0
@@ -179,6 +215,28 @@ class RecordDataVerification:
                 ax.plot(data[:, channel_idx], linewidth=0.5)
                 ax.set_title(str(first_channel_number + channel_idx), fontsize=8)
             ax.tick_params(labelsize=6)
+
+        fig.tight_layout()
+        fig.savefig(save_path)
+        plt.close(fig)
+
+    @staticmethod
+    def _plot_imu_grid(data, save_path: Path):
+        import matplotlib.pyplot as plt
+
+        data = np.asarray(data)
+        if data.ndim == 2 and data.shape[1] == 72:
+            data = data.reshape(data.shape[0], 9, 8)
+
+        fig, axes = plt.subplots(9, 8, figsize=(24, 22.5), sharex=True)
+
+        for sensor_idx in range(9):
+            for channel_idx in range(8):
+                ax = axes[sensor_idx, channel_idx]
+                if data.ndim == 3 and data.shape[1] > sensor_idx and data.shape[2] > channel_idx:
+                    ax.plot(data[:, sensor_idx, channel_idx], linewidth=0.5)
+                ax.set_title(f"{sensor_idx + 1}_{channel_idx + 1}", fontsize=8)
+                ax.tick_params(labelsize=6)
 
         fig.tight_layout()
         fig.savefig(save_path)
