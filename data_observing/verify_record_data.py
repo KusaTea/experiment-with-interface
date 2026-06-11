@@ -76,7 +76,13 @@ class RecordDataVerification:
             bins = np.arange(0, np.ceil(deltas.max()) + 1, 1)
             if bins.size < 2:
                 bins = np.array([0, 1])
-            plt.hist(deltas, bins=bins)
+            counts, bin_edges, patches = plt.hist(deltas, bins=bins)
+            for count, patch in zip(counts, patches):
+                if count == 0:
+                    continue
+                x = patch.get_x() + patch.get_width() / 2
+                y = patch.get_height()
+                plt.text(x, y, str(int(count)), ha="center", va="bottom", fontsize=9)
         plt.xlabel("Delta, s")
         plt.ylabel("Count")
         plt.title("Glove Data Delta Histogram")
