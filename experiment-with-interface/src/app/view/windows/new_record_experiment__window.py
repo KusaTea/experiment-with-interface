@@ -1,0 +1,96 @@
+from os import PathLike
+
+from PySide6.QtWidgets import QWidget, QLabel, QMainWindow
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
+
+from view.elements import VerticalLayout, ProgressBar, Label
+from view.types import BarInfoType
+from view import constants
+
+
+class ExperimentWindow(QMainWindow):
+
+    def __init__(
+            self,
+            bar_info: BarInfoType
+            ):
+        super().__init__()
+
+        central_widget = QWidget()
+
+        layout = VerticalLayout()
+
+        self.progress_bar = ProgressBar(
+            minimum=bar_info['min_value'],
+            maximum=bar_info['max_value'],
+            start_value=bar_info['min_value']
+            )
+        self.progress_bar.setMinimumWidth(500)
+        layout.addWidget(self.progress_bar, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop))
+
+        self.event_label = Label('')
+        layout.addWidget(self.event_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
+
+        self.timer = QLabel('')
+        layout.addWidget(self.timer, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
+
+        self.exercise_label = QLabel('')
+        layout.addWidget(self.exercise_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
+        
+        self.exercise_image = QLabel('')
+        self.exercise_image.resize(400, 400)
+        layout.addWidget(self.exercise_image, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
+
+        central_widget.setLayout(layout)
+
+        self.setCentralWidget(central_widget)
+
+        self.__background_label = QLabel(self)
+        self.__background_label.resize(3840, 2160)
+        self.__background_label.lower()
+    
+
+    def change_progress(self, step: int = 1):
+        self.progress_bar.increase(step)
+
+
+    def change_event_text(self, text: str):
+        self.event_label.setText(text)
+
+
+    def change_event_text_color_to_green(self):
+        self.event_label.change_text_color(constants.primary_color)
+
+
+    def change_event_text_color_to_orange(self):
+        self.event_label.change_text_color(constants.orange_color)
+
+
+    def change_timer(self, text: str):
+        self.timer.setText(text)
+
+
+    def change_exercise_name(self, new_exercise_name: str):
+        self.exercise_label.setText(new_exercise_name)
+    
+
+    def change_exercise_image(self, new_exercise_image_dir: PathLike[str]):
+        self.exercise_image.setPixmap(QPixmap(new_exercise_image_dir))
+
+
+    def change_exercise(self, new_exercise_name: str, new_exercise_image_dir: PathLike[str]):
+        self.exercise_label.setText(new_exercise_name)
+        self.exercise_image.setPixmap(QPixmap(new_exercise_image_dir))
+
+    
+    def change_bar_info(self, min_value: int, max_value: int):
+        self.progress_bar.changeMinMaxValues(min_value, max_value)
+
+    
+    def remove_background_image(self):
+        self.__background_label.clear()
+        
+    
+    def change_background_image(self, pixmap: QPixmap):
+        self.__background_label.setPixmap(pixmap)
