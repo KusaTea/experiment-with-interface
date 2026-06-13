@@ -77,8 +77,11 @@ class Controller(QObject):
         )
         self.__settings_window_controller.save_button_pushed.connect(
             self.__stacked_windows.display_main_menu,
-            self.settings_updated_signal.emit()
         )
+        self.__settings_window_controller.save_button_pushed.connect(
+            self.settings_updated_signal.emit
+        )
+
 
         self.__participant_info_window_controller = ParticipantInfoWindowController(
             window=self.__stacked_windows.patient_window,
