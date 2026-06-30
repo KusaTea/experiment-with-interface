@@ -33,7 +33,8 @@ class MarkupDataReader:
 
     def load_data(self) -> MarkupDataType:
         '''Returns two arrays: timestamps and exercises indeces'''
-        data = list()
+        timestamps = list()
+        exercises = list()
 
         with open(self.file_dir, 'r') as f:
             while line := f.readline():
@@ -42,11 +43,10 @@ class MarkupDataReader:
                 except:
                     continue
 
-                data.append(list(line_data.items())[0])
-        
-        data = np.array(data)
+                timestamps.append((list(line_data.keys()))[0])
+                exercises.append((list(line_data.values()))[0])
 
         return {
-            'timestamps': data[:, 0].astype(np.float32),
-            'exercises': data[:, 1].astype(np.int32)
+            'timestamps': np.array(timestamps, dtype=np.float64),
+            'exercises': np.array(exercises, dtype=np.int8)
             }

@@ -25,7 +25,7 @@ class EMGPreprocessing:
 
         self.initial_sampling_rate: int | None = None
         self.emg_data: NDArray[np.float16] | None = None
-        self.timestamps: NDArray[np.float32] | None = None
+        self.timestamps: NDArray[np.float64] | None = None
 
     def __call__(self):
         self.extract_emg_data()
@@ -102,13 +102,12 @@ class EMGPreprocessing:
         self.emg_data = downsampled_data
         return self.emg_data
 
-    def create_timestamps(self) -> NDArray[np.float32]:
+    def create_timestamps(self) -> NDArray[np.float64]:
         self._ensure_emg_data()
 
         samples_count = self.emg_data.shape[0]
         self.timestamps = (
-            np.arange(samples_count, dtype=np.float32)
-            * 1000
+            np.arange(samples_count, dtype=np.float64)
             / self.required_sampling_rate
         )
         return self.timestamps
