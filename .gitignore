@@ -3,3 +3,5 @@ temp/
 ./data/
 */tests/
 venv/
+verification_data/
+
