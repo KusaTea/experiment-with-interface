@@ -15,12 +15,19 @@ class MarkupDataPreprocessing:
         self.timestamps: NDArray[np.float64] | None = None
         self.exercises: NDArray[np.int8] | None = None
 
+    def __call__(self):
+        self.extract_timestamps()
+        self.extract_timestamps()
+        self.clean_markup()
+        self.save_markup()
+
     def extract_timestamps(self):
         with h5py.File(self.file_dir, "r") as hdf_file:
             self.timestamps = np.asarray(
                 hdf_file["markup"]["timestamps"][:],
                 dtype=np.float64,
             )
+            self.timestamps -= self.timestamps.min()
 
     def extract_markup(self):
         with h5py.File(self.file_dir, "r") as hdf_file:
@@ -33,9 +40,10 @@ class MarkupDataPreprocessing:
         self._ensure_timestamps()
         self._ensure_exercises()
 
-        _, unique_indices = np.unique(self.timestamps, return_index=True)
+        _, unique_indices = np.unique(self.timestamps[::-1], return_index=True)
         mask = np.zeros(self.timestamps.shape, dtype=bool)
         mask[np.sort(unique_indices)] = True
+        mask = mask[::-1]
 
         self.timestamps = self.timestamps[mask]
         self.exercises = self.exercises[mask]

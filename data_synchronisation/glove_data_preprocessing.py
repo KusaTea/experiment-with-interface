@@ -19,6 +19,21 @@ class GloveDataPreprocessing:
         self.fingers_quaternions: NDArray[np.float32] | None = None
         self.bones_quaternions: NDArray[np.float32] | None = None
 
+    def __call__(self):
+        self.extract_timestamps()
+        self.extract_lia_data()
+        self.transform_lia_data()
+        self.interpolate_lia()
+        self.save_lia_data()
+        
+        self.extract_fingers_data()
+        self.interpolate_fingers()
+        self.save_fingers_data()
+
+        self.extract_bones_data()
+        self.interpolate_bones()
+        self.save_bones_data()
+
     def extract_timestamps(self):
         with h5py.File(self.file_dir, "r") as hdf_file:
             timestamps = hdf_file["position"]["timestamps"][:] / 1_000 # transform from ms to s
@@ -39,7 +54,7 @@ class GloveDataPreprocessing:
     def transform_lia_data(self):
         self._ensure_lia_data()
 
-        self.lia_data = np.max((self.lia_data ** 2).sum(axis=1), axis=-1).astype(np.float32)
+        self.lia_data = np.max(np.sqrt((self.lia_data ** 2).sum(axis=1)), axis=-1).astype(np.float32)
 
     def interpolate_lia(self):
         self._ensure_timestamps()
