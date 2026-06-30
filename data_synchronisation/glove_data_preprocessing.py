@@ -14,7 +14,7 @@ class GloveDataPreprocessing:
         self.file_dir = Path(file_dir)
         self.required_sampling_rate = required_sampling_rate
 
-        self.timestamps: NDArray[np.float32] | None = None
+        self.timestamps: NDArray[np.float64] | None = None
         self.lia_data: NDArray[np.float32] | None = None
         self.fingers_quaternions: NDArray[np.float32] | None = None
         self.bones_quaternions: NDArray[np.float32] | None = None
@@ -124,14 +124,14 @@ class GloveDataPreprocessing:
         
         return interpolated_quaternions
 
-    def _create_interpolation_timestamps(self) -> NDArray[np.float32]:
+    def _create_interpolation_timestamps(self) -> NDArray[np.float64]:
         self._ensure_timestamps()
 
         step = 1 / self.required_sampling_rate
         samples_count = (
             int(np.floor(np.max(self.timestamps) * self.required_sampling_rate)) + 1
         )
-        return (np.arange(samples_count, dtype=np.float32) * step).astype(np.float32)
+        return (np.arange(samples_count, dtype=np.float64) * step).astype(np.float64)
 
     @staticmethod
     def _save_dataset(
