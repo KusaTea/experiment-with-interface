@@ -239,7 +239,10 @@ class SynchroniseEMGAndGlove:
         """
 
         if len(self.emg_data) != len(self.lia_data):
-            raise ValueError("emg_signal и acc_signal должны иметь одинаковую длину")
+            # raise ValueError("emg_signal и acc_signal должны иметь одинаковую длину")
+            min_len = min(len(self.emg_data), len(self.lia_data))
+            self.emg_data = self.emg_data[:min_len]
+            self.lia_data = self.lia_data[:min_len]
 
         n = len(self.emg_data)
 
