@@ -15,59 +15,57 @@ class GloveDataPreprocessing:
         self.required_sampling_rate = required_sampling_rate
 
         self.timestamps: NDArray[np.float32] | None = None
-        self.accelerometers_data: NDArray[np.float32] | None = None
+        self.lia_data: NDArray[np.float32] | None = None
         self.fingers_quaternions: NDArray[np.float32] | None = None
         self.bones_quaternions: NDArray[np.float32] | None = None
 
-    def extract_timestamps(self) -> NDArray[np.float32]:
+    def extract_timestamps(self):
         with h5py.File(self.file_dir, "r") as hdf_file:
+            timestamps = hdf_file["position"]["timestamps"][:] / 1_000 # transform from ms to s
             timestamps = np.asarray(
-                hdf_file["position"]["timestamps"] / 1_000_000, # transform from microseconds to seconds
-                dtype=np.float32,
+                timestamps,
+                dtype=np.float64,
             )
 
         self.timestamps = timestamps - np.min(timestamps)
 
-    def extract_accelerometers_data(self) -> NDArray[np.float32]:
+    def extract_lia_data(self):
         with h5py.File(self.file_dir, "r") as hdf_file:
-            self.accelerometers_data = np.asarray(
-                hdf_file["position"]["imu"][:, :, 5:8],
+            self.lia_data = np.asarray(
+                hdf_file["position"]["lia"][:],
                 dtype=np.float32,
             )
 
-    def transform_accelerometers_data(self) -> NDArray[np.float32]:
-        self._ensure_accelerometers_data()
+    def transform_lia_data(self):
+        self._ensure_lia_data()
 
-        self.accelerometers_data = np.max(
-            np.abs(self.accelerometers_data),
-            axis=(1, 2),
-        ).astype(np.float32)
+        self.lia_data = np.max((self.lia_data ** 2).sum(axis=1), axis=-1).astype(np.float32)
 
-    def interpolate_accelerometers(self) -> NDArray[np.float32]:
+    def interpolate_lia(self):
         self._ensure_timestamps()
-        self._ensure_accelerometers_data()
+        self._ensure_lia_data()
 
         interpolation_timestamps = self._create_interpolation_timestamps()
-        self.accelerometers_data = np.interp(
+        self.lia_data = np.interp(
             interpolation_timestamps,
             self.timestamps,
-            self.accelerometers_data,
+            self.lia_data,
         ).astype(np.float32)
 
-    def save_accelerometers_data(self) -> Path:
-        self._ensure_accelerometers_data()
+    def save_lia_data(self):
+        self._ensure_lia_data()
 
-        self._save_dataset("imu", self.accelerometers_data)
-        self.accelerometers_data = None
+        self._save_dataset("lia", self.lia_data)
+        self.lia_data = None
 
-    def extract_fingers_data(self) -> NDArray[np.float32]:
+    def extract_fingers_data(self):
         with h5py.File(self.file_dir, "r") as hdf_file:
             self.fingers_quaternions = np.asarray(
-                hdf_file["position"]["fingers"],
+                hdf_file["position"]["fingers"][:],
                 dtype=np.float32,
             )
 
-    def interpolate_fingers(self) -> NDArray[np.float32]:
+    def interpolate_fingers(self):
         self._ensure_timestamps()
         self._ensure_fingers_quaternions()
 
@@ -75,20 +73,20 @@ class GloveDataPreprocessing:
             self.fingers_quaternions
         )
 
-    def save_fingers_data(self) -> Path:
+    def save_fingers_data(self):
         self._ensure_fingers_quaternions()
 
         self._save_dataset("fingers", self.fingers_quaternions)
         self.fingers_quaternions = None
 
-    def extract_bones_data(self) -> NDArray[np.float32]:
+    def extract_bones_data(self):
         with h5py.File(self.file_dir, "r") as hdf_file:
             self.bones_quaternions = np.asarray(
-                hdf_file["position"]["bones"],
+                hdf_file["position"]["bones"][:],
                 dtype=np.float32,
             )
 
-    def interpolate_bones(self) -> NDArray[np.float32]:
+    def interpolate_bones(self):
         self._ensure_timestamps()
         self._ensure_bones_quaternions()
 
@@ -96,7 +94,7 @@ class GloveDataPreprocessing:
             self.bones_quaternions
         )
 
-    def save_bones_data(self) -> Path:
+    def save_bones_data(self):
         self._ensure_bones_quaternions()
 
         output_path = self._save_dataset("bones", self.bones_quaternions)
@@ -123,7 +121,7 @@ class GloveDataPreprocessing:
                     self.timestamps,
                     quaternions[:, item_idx, value_idx],
                 )
-
+        
         return interpolated_quaternions
 
     def _create_interpolation_timestamps(self) -> NDArray[np.float32]:
@@ -154,10 +152,10 @@ class GloveDataPreprocessing:
         if self.timestamps is None:
             raise ValueError("Timestamps are empty. Run extract_timestamps first.")
 
-    def _ensure_accelerometers_data(self):
-        if self.accelerometers_data is None:
+    def _ensure_lia_data(self):
+        if self.lia_data is None:
             raise ValueError(
-                "Accelerometers data is empty. Run extract_accelerometers_data first."
+                "Accelerometers data is empty. Run extract_lia_data first."
             )
 
     def _ensure_fingers_quaternions(self):
