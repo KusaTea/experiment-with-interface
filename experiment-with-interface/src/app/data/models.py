@@ -11,7 +11,7 @@ class EMGDataType(TypedDict):
 
 class SensoGloveDataType(TypedDict):
     start: int
-    imu: NDArray
+    lia: NDArray
     bones: NDArray
     fingers: NDArray
     timestamps: NDArray

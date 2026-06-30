@@ -18,7 +18,7 @@ class DataMerger:
 
             position_group = save_file.create_group('position')
             position_group.attrs['start_timestamp'] = sensoglove_data['start']
-            position_group.create_dataset(name='imu', data=sensoglove_data['imu'])
+            position_group.create_dataset(name='lia', data=sensoglove_data['lia'])
             position_group.create_dataset(name='bones', data=sensoglove_data['bones'])
             position_group.create_dataset(name='fingers', data=sensoglove_data['fingers'])
             position_group.create_dataset(name='timestamps', data=sensoglove_data['timestamps'])
