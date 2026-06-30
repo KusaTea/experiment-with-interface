@@ -24,10 +24,18 @@ class EMGPreprocessing:
         self.higher_frequency_threshold = higher_frequency_threshold
 
         self.initial_sampling_rate: int | None = None
-        self.emg_data: NDArray[np.float64] | None = None
-        self.timestamps: NDArray[np.float64] | None = None
+        self.emg_data: NDArray[np.float16] | None = None
+        self.timestamps: NDArray[np.float32] | None = None
 
-    def extract_emg_data(self) -> NDArray[np.float64]:
+    def __call__(self):
+        self.extract_emg_data()
+        self.filter_emg()
+        self.downsample_emg()
+        self.emg_data = self.emg_data.reshape(-1, self.emg_data.shape[-1])
+        self.create_timestamps()
+        self.save_new_data()
+
+    def extract_emg_data(self) -> NDArray[np.float16]:
         with h5py.File(self.file_dir, "r") as hdf_file:
             emg_group = hdf_file["emg"]
             emg_dataset = emg_group["emg"]
@@ -45,10 +53,10 @@ class EMGPreprocessing:
 
             emg_data = self._read_selected_channels(emg_dataset)
 
-        self.emg_data = np.asarray(emg_data, dtype=np.float64) * float(mV_constant)
+        self.emg_data = np.asarray(emg_data, dtype=np.float16) * float(mV_constant)
         return self.emg_data
 
-    def filter_emg(self) -> NDArray[np.float64]:
+    def filter_emg(self) -> NDArray[np.float16]:
         self._ensure_emg_data()
         self._ensure_initial_sampling_rate()
 
@@ -63,16 +71,18 @@ class EMGPreprocessing:
             Q=30,
             fs=self.initial_sampling_rate,
         )
-        filtered_data = signal.filtfilt(notch_b, notch_a, self.emg_data, axis=0)
 
-        sos = signal.butter(
-            N=4,
-            Wn=[self.lower_frequency_threshold, self.higher_frequency_threshold],
-            btype="bandpass",
-            fs=self.initial_sampling_rate,
-            output="sos",
-        )
-        self.emg_data = signal.sosfiltfilt(sos, filtered_data, axis=0)
+        for window_idx in range(self.emg_data.shape[0]):
+            filtered_data = signal.filtfilt(notch_b, notch_a, self.emg_data[window_idx], axis=0)
+
+            sos = signal.butter(
+                N=4,
+                Wn=[self.lower_frequency_threshold, self.higher_frequency_threshold],
+                btype="bandpass",
+                fs=self.initial_sampling_rate,
+                output="sos",
+            )
+            self.emg_data[window_idx] = signal.sosfiltfilt(sos, filtered_data, axis=0)
         return self.emg_data
 
     def downsample_emg(self) -> NDArray[np.float64]:
@@ -86,15 +96,18 @@ class EMGPreprocessing:
         up = self.required_sampling_rate // greatest_common_divisor
         down = self.initial_sampling_rate // greatest_common_divisor
 
-        self.emg_data = signal.resample_poly(self.emg_data, up=up, down=down, axis=0)
+        downsampled_data = np.empty((self.emg_data.shape[0], self.required_sampling_rate, self.emg_data.shape[-1]), dtype=np.float16)
+        for window_idx in range(self.emg_data.shape[0]):
+            downsampled_data[window_idx] = signal.resample_poly(self.emg_data[window_idx], up=up, down=down, axis=0)
+        self.emg_data = downsampled_data
         return self.emg_data
 
-    def create_timestamps(self) -> NDArray[np.float64]:
+    def create_timestamps(self) -> NDArray[np.float32]:
         self._ensure_emg_data()
 
         samples_count = self.emg_data.shape[0]
         self.timestamps = (
-            np.arange(samples_count, dtype=np.float64)
+            np.arange(samples_count, dtype=np.float32)
             * 1000
             / self.required_sampling_rate
         )
@@ -115,8 +128,7 @@ class EMGPreprocessing:
 
     def _read_selected_channels(self, emg_dataset: h5py.Dataset) -> NDArray[Any]:
         if emg_dataset.ndim == 3:
-            selected_data = emg_dataset[:, :, self.channels_slice]
-            return selected_data.reshape(-1, selected_data.shape[-1])
+            return emg_dataset[:, :, self.channels_slice]
 
         if emg_dataset.ndim == 2:
             return emg_dataset[:, self.channels_slice]
