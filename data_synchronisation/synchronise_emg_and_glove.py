@@ -218,7 +218,7 @@ class SynchroniseEMGAndGlove:
 
     def build_sync_indices_by_nonoverlap_windows(
         self,
-        window_size: int,
+        window_size_in_s: int,
         max_lag_samples: int,
         min_corr: float | None = None,
         drop_last_incomplete: bool = True,
@@ -239,6 +239,7 @@ class SynchroniseEMGAndGlove:
             self.emg_data = self.emg_data[:self.min_len]
             self.lia_data = self.lia_data[:self.min_len]
 
+        window_size = window_size_in_s * self.sampling_rate
         if window_size <= 1:
             raise ValueError("window_size должен быть больше 1.")
 
@@ -325,6 +326,9 @@ class SynchroniseEMGAndGlove:
         else:
             self.synced_emg_idx = np.concatenate(idx_emg_all)
             self.synced_glove_idx = np.concatenate(idx_lia_all)
+
+        self.emg_data = self.emg_data[self.synced_emg_idx]
+        self.lia_data = self.lia_data[self.synced_glove_idx]
 
         lags = np.asarray(lags, dtype=int)
         corr_scores = np.asarray(corr_scores, dtype=float)
