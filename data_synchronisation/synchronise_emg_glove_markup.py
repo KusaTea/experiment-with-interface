@@ -7,15 +7,17 @@ from scipy.signal import butter, filtfilt, windows
 from scipy.ndimage import median_filter
 
 
-class SynchroniseEMGAndGlove:
+class SynchroniseEMGGloveMarkup:
     def __init__(
         self,
         emg_dir: str | Path,
         glove_dir: str | Path,
+        markup_dir: str | Path,
         sampling_rate: int
     ):
         self.emg_dir = Path(emg_dir)
         self.glove_dir = Path(glove_dir)
+        self.markup_dir = Path(markup_dir)
 
         self.emg_data: NDArray[np.float64] | None = None
         self.emg_timestamps: NDArray[np.float64] | None = None
@@ -46,6 +48,12 @@ class SynchroniseEMGAndGlove:
     def extract_lia(self):
         with h5py.File(self.glove_dir, "r") as hdf_file:
             self.lia_data = np.asarray(hdf_file["lia"][:], dtype=np.float64)
+    
+    def extract_exercises(self):
+        with h5py.File(self.markup_dir, "r") as hdf_file:
+            self.exercise_labels = np.asarray(hdf_file["exercises"][:], dtype=np.int8)
+            self.exercise_labels = self.exercise_labels[self.exercise_labels != 0]
+
 
     @staticmethod
     def zscore(x: np.ndarray) -> np.ndarray:
@@ -129,8 +137,6 @@ class SynchroniseEMGAndGlove:
         if normalize:
             self.lia_data = self.zscore(self.lia_data)
 
-
-    import numpy as np
 
     @staticmethod
     def normalized_corr(x: np.ndarray, y: np.ndarray, min_points: int = 5) -> float:
@@ -339,7 +345,101 @@ class SynchroniseEMGAndGlove:
 
     def sync_glove_signal(self, glove_signal: NDArray) -> NDArray:
         return glove_signal[self.synced_glove_idx]
-    
+
+    def label_emg_activity_by_exercises(
+        self,
+        high_threshold: float = 2.0,
+        low_threshold: float = 1.0,
+        min_event_duration_sec: float = 2,
+        min_gap_sec: float = 2,
+        stop_if_labels_end: bool = True,
+    ) -> dict:
+
+        if self.emg_data.ndim != 1:
+            raise ValueError("emg_signal должен быть одномерным массивом.")
+
+        if self.exercise_labels.ndim != 1:
+            raise ValueError("exercise_labels должен быть одномерным массивом.")
+
+        if low_threshold >= high_threshold:
+            raise ValueError("low_threshold должен быть меньше high_threshold.")
+
+        if self.sampling_rate <= 0:
+            raise ValueError("fs должен быть положительным.")
+
+        n_samples = len(self.emg_data)
+
+        min_event_samples = int(round(min_event_duration_sec * self.sampling_rate))
+        min_gap_samples = int(round(min_gap_sec * self.sampling_rate))
+
+        min_event_samples = max(min_event_samples, 1)
+        min_gap_samples = max(min_gap_samples, 0)
+
+        raw_events = []
+
+        in_event = False
+        event_start = None
+
+        for i, value in enumerate(self.emg_data):
+            if not np.isfinite(value):
+                value = -np.inf
+
+            if not in_event and value >= high_threshold:
+                in_event = True
+                event_start = i
+
+            elif in_event and value <= low_threshold:
+                event_end = i
+                raw_events.append((event_start, event_end))
+                in_event = False
+                event_start = None
+
+        if in_event and event_start is not None:
+            raw_events.append((event_start, n_samples))
+
+        filtered_events = []
+
+        for start, end in raw_events:
+            if end - start >= min_event_samples:
+                filtered_events.append((start, end))
+
+        merged_events = []
+
+        for start, end in filtered_events:
+            if not merged_events:
+                merged_events.append([start, end])
+                continue
+
+            previous_start, previous_end = merged_events[-1]
+            gap = start - previous_end
+
+            if gap <= min_gap_samples:
+                merged_events[-1][1] = end
+            else:
+                merged_events.append([start, end])
+
+        merged_events = [(int(start), int(end)) for start, end in merged_events]
+
+        self.sample_labels = np.zeros(n_samples, dtype=self.exercise_labels.dtype)
+
+        label_index = 0
+
+        for event_index, (start, end) in enumerate(merged_events):
+            if label_index >= len(self.exercise_labels):
+                if stop_if_labels_end:
+                    break
+                else:
+                    raise ValueError(
+                        "Количество найденных событий активности больше, чем "
+                        "количество элементов в exercise_labels."
+                    )
+
+            label = self.exercise_labels[label_index]
+
+            self.sample_labels[start:end] = label
+
+            label_index += 1
+
 
     def _ensure_emg_data(self):
         if self.emg_data is None:
