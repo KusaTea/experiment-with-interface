@@ -23,6 +23,9 @@ class SynchroniseEMGAndGlove:
         self.time_gap: float | None = None
         self.sampling_rate = sampling_rate
 
+        self.synced_emg_idx: NDArray | None = None
+        self.synced_glove_idx: NDArray | None = None
+
     def extract_emg(self):
         with h5py.File(self.emg_dir, "r") as hdf_file:
             self.emg_data = np.asarray(hdf_file["emg"][:], dtype=np.float64)
@@ -93,14 +96,12 @@ class SynchroniseEMGAndGlove:
     ) -> np.ndarray:
         self._ensure_emg_data()
 
-        # RMS-огибающая
         self.emg_data = self.moving_rms(
             self.emg_data,
             fs=self.sampling_rate,
             window_ms=rms_window_ms
         )
 
-        # Дополнительное сглаживание огибающей
         self.emg_data = self.butter_lowpass_filter(
             self.emg_data,
             fs=self.sampling_rate,
@@ -129,18 +130,16 @@ class SynchroniseEMGAndGlove:
             self.lia_data = self.zscore(self.lia_data)
 
 
+    import numpy as np
+
     @staticmethod
-    def normalized_corr(x: np.ndarray, y: np.ndarray) -> float:
-        """
-        Нормализованная корреляция двух фрагментов.
-        NaN-значения игнорируются.
-        """
+    def normalized_corr(x: np.ndarray, y: np.ndarray, min_points: int = 5) -> float:
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
 
         mask = np.isfinite(x) & np.isfinite(y)
 
-        if np.sum(mask) < 5:
+        if np.sum(mask) < min_points:
             return -np.inf
 
         x = x[mask]
@@ -149,215 +148,193 @@ class SynchroniseEMGAndGlove:
         x = x - np.mean(x)
         y = y - np.mean(y)
 
-        denom = np.sqrt(np.sum(x ** 2) * np.sum(y ** 2)) + 1e-12
+        denom = np.sqrt(np.sum(x ** 2) * np.sum(y ** 2))
 
-        return np.sum(x * y) / denom
+        if denom < 1e-12:
+            return -np.inf
 
+        return float(np.sum(x * y) / denom)
 
     @staticmethod
-    def shift_1d_signal(x: np.ndarray, lag_samples: int) -> np.ndarray:
-        """
-        Сдвигает сигнал внутри окна.
+    def get_overlap_for_lag(
+        n: int,
+        lag: int
+    ) -> tuple[np.ndarray, np.ndarray]:
 
-        Конвенция:
-        lag_samples > 0:
-            сигнал x запаздывает относительно опорного сигнала,
-            поэтому его нужно сдвинуть влево.
+        if abs(lag) >= n:
+            return np.array([], dtype=int), np.array([], dtype=int)
 
-        lag_samples < 0:
-            сигнал x опережает опорный сигнал,
-            поэтому его нужно сдвинуть вправо.
+        if lag > 0:
+            idx_a = np.arange(0, n - lag)
+            idx_b = np.arange(lag, n)
 
-        Пустые области заполняются NaN.
-        """
-        x = np.asarray(x, dtype=float)
-        y = np.full_like(x, np.nan, dtype=float)
-
-        if lag_samples == 0:
-            y[:] = x
-
-        elif lag_samples > 0:
-            y[:-lag_samples] = x[lag_samples:]
+        elif lag < 0:
+            shift = -lag
+            idx_a = np.arange(shift, n)
+            idx_b = np.arange(0, n - shift)
 
         else:
-            lag = abs(lag_samples)
-            y[lag:] = x[:-lag]
+            idx_a = np.arange(0, n)
+            idx_b = np.arange(0, n)
 
-        return y
+        return idx_a, idx_b
 
-
-    def estimate_window_lag(
+    def estimate_lag_for_window(
         self,
-        acc_window: np.ndarray,
-        emg_window: np.ndarray,
-        max_lag_samples: int
+        signal_a_window: np.ndarray,
+        signal_b_window: np.ndarray,
+        max_lag_samples: int,
+        min_points: int = 5
     ) -> tuple[int, float]:
-        """
-        Ищет локальный сдвиг ЭМГ относительно ускорения.
 
-        Возвращает:
-            best_lag_samples, best_corr
-        """
+        signal_a_window = np.asarray(signal_a_window, dtype=float)
+        signal_b_window = np.asarray(signal_b_window, dtype=float)
+
+        if len(signal_a_window) != len(signal_b_window):
+            raise ValueError("Окна должны иметь одинаковую длину.")
+
+        n = len(signal_a_window)
+
         best_lag = 0
-        best_score = -np.inf
+        best_corr = -np.inf
 
         for lag in range(-max_lag_samples, max_lag_samples + 1):
-            emg_shifted = self.shift_1d_signal(emg_window, lag)
-            score = self.normalized_corr(acc_window, emg_shifted)
+            idx_a, idx_b = self.get_overlap_for_lag(n, lag)
 
-            if score > best_score:
-                best_score = score
+            if len(idx_a) < min_points:
+                continue
+
+            x = signal_a_window[idx_a]
+            y = signal_b_window[idx_b]
+
+            corr = self.normalized_corr(x, y, min_points=min_points)
+
+            if corr > best_corr:
+                best_corr = corr
                 best_lag = lag
 
-        return best_lag, best_score
+        return best_lag, best_corr
 
 
-    def align_signals_by_local_lags(
+    def build_sync_indices_by_nonoverlap_windows(
         self,
-        window_sec: float = 10.0,
-        step_sec: float = 1.0,
-        max_lag_sec: float = 2.0,
-        smooth_lags: bool = True,
-        min_corr: float | None = None
-    ):
-        """
-        Оконная синхронизация ЭМГ и линейного ускорения.
+        window_size: int,
+        max_lag_samples: int,
+        min_corr: float | None = None,
+        drop_last_incomplete: bool = True,
+        min_points: int = 5
+    ) -> dict:
 
-        Parameters
-        ----------
-        window_sec : float
-            Длина окна в секундах.
-        step_sec : float
-            Шаг окна в секундах.
-        max_lag_sec : float
-            Максимальный допустимый локальный сдвиг в секундах.
-        smooth_lags : bool
-            Сглаживать ли последовательность найденных сдвигов.
-        min_corr : float | None
-            Минимальная допустимая корреляция окна.
-            Если None, используются все окна.
-        """
+        if self.emg_data.ndim != 1:
+            raise ValueError("signal_a должен быть одномерным массивом.")
+
+        if self.lia_data.ndim != 1:
+            raise ValueError("signal_b должен быть одномерным массивом.")
 
         if len(self.emg_data) != len(self.lia_data):
-            # raise ValueError("emg_signal и acc_signal должны иметь одинаковую длину")
-            min_len = min(len(self.emg_data), len(self.lia_data))
-            self.emg_data = self.emg_data[:min_len]
-            self.lia_data = self.lia_data[:min_len]
+            # raise ValueError(
+            #     "signal_a и signal_b должны иметь одинаковую длину."
+            # )
+            self.min_len = min(len(self.emg_data), len(self.lia_data))
+            self.emg_data = self.emg_data[:self.min_len]
+            self.lia_data = self.lia_data[:self.min_len]
 
-        n = len(self.emg_data)
+        if window_size <= 1:
+            raise ValueError("window_size должен быть больше 1.")
 
-        window_size = int(round(window_sec * self.sampling_rate))
-        step_size = int(round(step_sec * self.sampling_rate))
-        max_lag_samples = int(round(max_lag_sec * self.sampling_rate))
+        if max_lag_samples < 0:
+            raise ValueError("max_lag_samples должен быть >= 0.")
 
-        if window_size <= 2 * max_lag_samples:
+        if max_lag_samples >= window_size:
             raise ValueError(
-                "window_sec должен быть существенно больше max_lag_sec. "
-                "Например: window_sec=10, max_lag_sec=2."
+                "max_lag_samples должен быть меньше window_size."
             )
 
-        if step_size < 1:
-            raise ValueError("step_sec слишком мал для данной fs")
+        n_samples = len(self.emg_data)
 
-        # Накопители для overlap-add
-        emg_accumulator = np.zeros(n, dtype=float)
-        acc_accumulator = np.zeros(n, dtype=float)
-        weight_accumulator = np.zeros(n, dtype=float)
+        window_starts = []
+        window_ends = []
 
-        # Весовое окно для плавной склейки
-        weight_window = windows.hann(window_size, sym=False)
+        start = 0
 
-        # Чтобы края окна не имели нулевой вес
-        weight_window = weight_window + 1e-6
-
-        window_starts = list(range(0, n - window_size + 1, step_size))
-
-        # Чтобы последний участок тоже попал в обработку
-        if window_starts[-1] != n - window_size:
-            window_starts.append(n - window_size)
-
-        raw_lags = []
-        corr_scores = []
-        centers = []
-
-        # Сначала оцениваем лаги для всех окон
-        for start in window_starts:
+        while start < n_samples:
             end = start + window_size
 
-            acc_window = self.lia_data[start:end]
-            emg_window = self.emg_data[start:end]
-
-            lag, score = self.estimate_window_lag(
-                acc_window=acc_window,
-                emg_window=emg_window,
-                max_lag_samples=max_lag_samples
-            )
-
-            raw_lags.append(lag)
-            corr_scores.append(score)
-            centers.append((start + end) / 2 / self.sampling_rate)
-
-        raw_lags = np.asarray(raw_lags, dtype=int)
-        corr_scores = np.asarray(corr_scores, dtype=float)
-        centers = np.asarray(centers, dtype=float)
-
-        # При необходимости отбрасываем окна с плохой корреляцией
-        lags_for_use = raw_lags.astype(float)
-
-        if min_corr is not None:
-            bad = corr_scores < min_corr
-
-            if np.any(bad):
-                good = ~bad
-
-                if np.sum(good) >= 2:
-                    lags_for_use[bad] = np.interp(
-                        centers[bad],
-                        centers[good],
-                        lags_for_use[good]
-                    )
+            if end > n_samples:
+                if drop_last_incomplete:
+                    break
                 else:
-                    lags_for_use[bad] = 0
+                    end = n_samples
 
-        # Сглаживание сдвигов, чтобы убрать скачки от ложных корреляций
-        if smooth_lags and len(lags_for_use) >= 5:
-            lags_for_use = median_filter(lags_for_use, size=5)
+            if end - start > max_lag_samples + min_points:
+                window_starts.append(start)
+                window_ends.append(end)
 
-        lags_for_use = np.round(lags_for_use).astype(int)
+            start += window_size
 
-        # Теперь сдвигаем окна и собираем итоговый сигнал
-        for start, lag in zip(window_starts, lags_for_use):
-            end = start + window_size
+        window_starts = np.asarray(window_starts, dtype=int)
+        window_ends = np.asarray(window_ends, dtype=int)
 
-            acc_window = self.lia_data[start:end]
+        idx_emg_all = []
+        idx_lia_all = []
+
+        lags = []
+        corr_scores = []
+        used_windows_mask = []
+
+        for start, end in zip(window_starts, window_ends):
             emg_window = self.emg_data[start:end]
+            lia_window = self.lia_data[start:end]
 
-            emg_shifted = self.shift_1d_signal(emg_window, lag)
+            current_window_size = end - start
 
-            valid = np.isfinite(emg_shifted) & np.isfinite(acc_window)
+            lag, corr = self.estimate_lag_for_window(
+                signal_a_window=emg_window,
+                signal_b_window=lia_window,
+                max_lag_samples=min(max_lag_samples, current_window_size - 1),
+                min_points=min_points
+            )
 
-            local_weight = weight_window.copy()
-            local_weight[~valid] = 0.0
+            lags.append(lag)
+            corr_scores.append(corr)
 
-            emg_accumulator[start:end] += np.nan_to_num(emg_shifted) * local_weight
-            acc_accumulator[start:end] += np.nan_to_num(acc_window) * local_weight
-            weight_accumulator[start:end] += local_weight
+            if min_corr is not None and corr < min_corr:
+                used_windows_mask.append(False)
+                continue
 
-        valid_total = weight_accumulator > 0
+            idx_emg_local, idx_lia_local = self.get_overlap_for_lag(
+                n=current_window_size,
+                lag=lag
+            )
 
-        emg_aligned = np.full(n, np.nan, dtype=float)
-        acc_aligned = np.full(n, np.nan, dtype=float)
+            if len(idx_emg_local) < min_points:
+                used_windows_mask.append(False)
+                continue
 
-        emg_aligned[valid_total] = (
-            emg_accumulator[valid_total] / weight_accumulator[valid_total]
-        )
+            idx_emg_global = start + idx_emg_local
+            idx_lia_global = start + idx_lia_local
 
-        acc_aligned[valid_total] = (
-            acc_accumulator[valid_total] / weight_accumulator[valid_total]
-        )
+            idx_emg_all.append(idx_emg_global)
+            idx_lia_all.append(idx_lia_global)
 
-        self.emg_data = emg_aligned
-        self.lia_data = acc_aligned
+            used_windows_mask.append(True)
+
+        if len(idx_emg_all) == 0:
+            self.synced_emg_idx = np.array([], dtype=int)
+            self.synced_glove_idx = np.array([], dtype=int)
+        else:
+            self.synced_emg_idx = np.concatenate(idx_emg_all)
+            self.synced_glove_idx = np.concatenate(idx_lia_all)
+
+        lags = np.asarray(lags, dtype=int)
+        corr_scores = np.asarray(corr_scores, dtype=float)
+        used_windows_mask = np.asarray(used_windows_mask, dtype=bool)
+    
+    def sync_emg_signal(self, emg_signal: NDArray) -> NDArray:
+        return emg_signal[self.synced_emg_idx]
+
+    def sync_glove_signal(self, glove_signal: NDArray) -> NDArray:
+        return glove_signal[self.synced_glove_idx]
     
 
     def _ensure_emg_data(self):
@@ -371,3 +348,7 @@ class SynchroniseEMGAndGlove:
     def _ensure_lia_data(self):
         if self.lia_data is None:
             raise ValueError("LIA data is empty. Run extract_lia first.")
+    
+    def _ensure_sync_idx(self):
+        if self.synced_emg_idx is None or self.synced_glove_idx:
+            raise ValueError("There are no sync indeces. Run build_sync_indices_by_nonoverlap_windows first.")
