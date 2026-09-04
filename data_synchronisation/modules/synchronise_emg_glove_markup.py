@@ -5,6 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import butter, filtfilt, windows
 from scipy.ndimage import median_filter
+import matplotlib.pyplot as plt
 
 
 class SynchroniseEMGGloveMarkup:
@@ -27,6 +28,7 @@ class SynchroniseEMGGloveMarkup:
 
         self.synced_emg_idx: NDArray | None = None
         self.synced_glove_idx: NDArray | None = None
+
 
     def extract_emg(self):
         with h5py.File(self.emg_dir, "r") as hdf_file:
@@ -351,7 +353,8 @@ class SynchroniseEMGGloveMarkup:
         high_threshold: float = 2.0,
         low_threshold: float = 1.0,
         min_event_duration_sec: float = 2,
-        min_gap_sec: float = 2,
+        max_event_duration_sec: float = 4.8,
+        min_gap_sec: float = 9,
         stop_if_labels_end: bool = True,
     ) -> dict:
 
@@ -379,20 +382,24 @@ class SynchroniseEMGGloveMarkup:
 
         in_event = False
         event_start = None
+        event_dur = 0
 
-        for i, value in enumerate(self.emg_data):
+        for i, value in enumerate(self.emg_data ** 3):
             if not np.isfinite(value):
                 value = -np.inf
 
             if not in_event and value >= high_threshold:
                 in_event = True
                 event_start = i
+                event_dur = 0
 
-            elif in_event and value <= low_threshold:
+            elif in_event and (value <= low_threshold or event_dur / self.sampling_rate > max_event_duration_sec):
                 event_end = i
                 raw_events.append((event_start, event_end))
                 in_event = False
                 event_start = None
+            
+            event_dur += 1
 
         if in_event and event_start is not None:
             raw_events.append((event_start, n_samples))
@@ -439,6 +446,22 @@ class SynchroniseEMGGloveMarkup:
             self.sample_labels[start:end] = label
 
             label_index += 1
+    
+    def visualise_signals(self, window_length_in_s: int):
+        window_length = window_length_in_s * self.sampling_rate
+        
+        save_dir = Path('./tmp/plots/')
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        for window_idx, start in enumerate(range(0, len(self.emg_data) - window_length, window_length)):
+            fig, ax = plt.subplots(1, 1)
+            fig.set_size_inches(w=800 / 100, h=400 / 100)
+            ax.plot(self.emg_data[start: start+window_length])
+            ax.plot(self.lia_data[start: start+window_length])
+            ax.plot(self.sample_labels[start: start+window_length])
+
+
+            fig.savefig(f'./tmp/plots/{window_idx}.png')
 
 
     def _ensure_emg_data(self):
