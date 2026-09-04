@@ -20,9 +20,9 @@ class SensogloveRawDataReader:
             )
     
     def get_valuable_data(self) -> dtpe.SensoGloveDataType:
-        data = {
+        data: dtpe.SensoGloveDataType = {
             'start': 0,
-            'imu': list(),
+            'lia': list(),
             'bones': list(),
             'fingers': list(),
             'timestamps': list()
@@ -36,24 +36,30 @@ class SensogloveRawDataReader:
 
                 if 'start_time' in line_data:
                     data['start'] = line_data['start_time']
-                elif line_data['type'] == 'raw_data':
-                    data['imu'].append(self.__transform_imu_data(line_data['data']))
-                else:
+                elif line_data['type'] == 'position':
+                    data['lia'].append(self.__transform_lia_data(line_data['data']['fingers']))
                     data['bones'].append(self.__transform_bones_data(line_data['data']['bones']))
                     data['fingers'].append(self.__transform_fingers_data(line_data['data']['fingers']))
                     data['timestamps'].append(int(line_data['data']['ts']))
 
-        for key in ('imu', 'bones', 'fingers'):
-            data[key] = np.array(data[key], dtype=np.float64)
+        data['lia'] = np.array(data['lia'], dtype=np.float32)
+        for key in ('bones', 'fingers'):
+            data[key] = np.array(data[key], dtype=np.float32)
         data['timestamps'] = np.array(data['timestamps'], dtype=np.int64)
 
         return data
     
     
     @staticmethod
-    def __transform_imu_data(imu_data: dict):
-        data = [imu_data[f'imu_{num}'] for num in range(0, 9)]
-        return np.array(data, dtype=np.float32)
+    def __transform_lia_data(fingers_data: dict):
+        finger_lia = list()
+        for finger in fingers_data:
+            finger_lia.append(finger['lia'])
+            try:
+                finger_lia.append(finger['lia2'])
+            except KeyError:
+                continue
+        return np.array(finger_lia, dtype=np.float32)
     
 
     @staticmethod

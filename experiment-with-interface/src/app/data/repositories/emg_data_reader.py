@@ -50,7 +50,7 @@ class EMGDataReader:
 
 
     def get_all_timestamps(self) -> NDArray:
-        return np.array([float(ts) for ts in self.__hdf_file.keys()], dtype=np.float32)
+        return np.array([float(ts) for ts in self.__hdf_file.keys()], dtype=np.float64)
     
 
     def get_all_emg_data(self):

@@ -4,4 +4,6 @@ temp/
 */tests/
 venv/
 verification_data/
-
+**/.ipynb_checkpoints/
+**/.vscode/
+**/tmp/
