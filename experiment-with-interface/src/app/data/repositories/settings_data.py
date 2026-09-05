@@ -1,4 +1,7 @@
 import json
+import os
+import tempfile
+from copy import deepcopy
 from pathlib import Path
 
 
@@ -134,11 +137,22 @@ class SettingsData:
             self.__load_settings()
     
 
-    def __save_settings(self):
-        with open(self.__settings_dir, 'w') as json_file:
-            json.dump(self.__settings, json_file)
+    def __save_settings(self, settings):
+        temporary_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                    mode='w', encoding='utf-8', dir=self.__settings_dir.parent,
+                    prefix=self.__settings_dir.name + '.', suffix='.tmp', delete=False
+                    ) as json_file:
+                temporary_path = Path(json_file.name)
+                json.dump(settings, json_file)
+            os.replace(temporary_path, self.__settings_dir)
+        finally:
+            if temporary_path is not None and temporary_path.exists():
+                temporary_path.unlink()
     
 
     def update_settings(self, settings):
-        self.__settings = settings
-        self.__save_settings()
+        updated_settings = deepcopy(settings)
+        self.__save_settings(updated_settings)
+        self.__settings = updated_settings

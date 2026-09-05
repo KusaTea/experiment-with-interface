@@ -1,6 +1,8 @@
-from typing import Callable
+from copy import deepcopy
+from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QMessageBox
 
 from data.repositories import SettingsData
 
@@ -73,41 +75,51 @@ class SettingsWindowController(QObject):
 
     
     def __callback_for_save_button(self):
-        self.__transform_settings_from_raw()
-        self.__settings_data.update_settings(self.__settings)
+        try:
+            settings = self.__transform_settings_from_raw()
+            Path(settings['save_directory']).mkdir(parents=True, exist_ok=True)
+            self.__settings_data.update_settings(settings)
+        except (ValueError, KeyError, OSError) as error:
+            QMessageBox.warning(self.__settings_window, 'Settings', str(error))
+            return
+        self.__settings = self.__settings_data.settings
         self.save_button_pushed.emit()
     
 
     def __transform_settings_from_raw(self):
-        try:
-            fields_values = self.__settings_window.get_all_settings()
+        fields_values = self.__settings_window.get_all_settings()
+        settings = deepcopy(self.__settings_data.settings)
+        for name, value in fields_values['app'].items():
+            if name != 'save_directory' and value <= 0:
+                raise ValueError('Exercise repeats and durations must be greater than zero.')
+        for device in ('glove', 'myograph'):
+            if not 1 <= fields_values[device]['port'] <= 65535:
+                raise ValueError('Port must be between 1 and 65535.')
 
-            self.__settings['save_directory'] = fields_values['app']['save_directory']
-            self.__settings['experiment_settings'] = {
-                'repeats_number': fields_values['app']['repeats_number'],
-                'rest_time_in_s': fields_values['app']['rest_time_in_s'],
-                'exercise_time_in_s': fields_values['app']['exercise_time_in_s']
-                }
-            
-            self.__settings['glove_settings'] = fields_values['glove']
+        settings['save_directory'] = fields_values['app']['save_directory']
+        settings['experiment_settings'] = {
+            'repeats_number': fields_values['app']['repeats_number'],
+            'rest_time_in_s': fields_values['app']['rest_time_in_s'],
+            'exercise_time_in_s': fields_values['app']['exercise_time_in_s']
+            }
 
-            self.__settings['myograph_settings']['ip'] = fields_values['myograph']['ip']
-            self.__settings['myograph_settings']['port'] = fields_values['myograph']['port']
-            self.__settings['myograph_settings']['options']['acquisition_byte_info']['sampling_rate'] = from_raw_transform_dicts['sampling_rate'][fields_values['myograph']['sampling_rate']]
-            self.__settings['myograph_settings']['options']['acquisition_byte_info']['channels_for_analog_output'] = fields_values['myograph']['active_channels']
+        settings['glove_settings'] = fields_values['glove']
 
-            for channel_name, channel_settings in fields_values['myograph']['channels_settings'].items():
-                self.__settings['myograph_settings']['options']['channels_bytes_info'][channel_name][1]['sensor_index'] = channel_settings['sensor_index']
-                self.__settings['myograph_settings']['options']['channels_bytes_info'][channel_name][1]['adapter_index'] = channel_settings['adapter_index']
+        settings['myograph_settings']['ip'] = fields_values['myograph']['ip']
+        settings['myograph_settings']['port'] = fields_values['myograph']['port']
+        settings['myograph_settings']['options']['acquisition_byte_info']['sampling_rate'] = from_raw_transform_dicts['sampling_rate'][fields_values['myograph']['sampling_rate']]
+        settings['myograph_settings']['options']['acquisition_byte_info']['channels_for_analog_output'] = fields_values['myograph']['active_channels']
 
-                self.__settings['myograph_settings']['options']['channels_bytes_info'][channel_name][2]['high_pass_filter'] = from_raw_transform_dicts['high_pass_filter_threshold'][channel_settings['high_pass_filter']]
-                self.__settings['myograph_settings']['options']['channels_bytes_info'][channel_name][2]['low_pass_filter'] = from_raw_transform_dicts['low_pass_filter_threshold'][channel_settings['low_pass_filter']]
-                self.__settings['myograph_settings']['options']['channels_bytes_info'][channel_name][2]['mode'] = from_raw_transform_dicts['mode'][channel_settings['mode']]
+        for channel_name, channel_settings in fields_values['myograph']['channels_settings'].items():
+            settings['myograph_settings']['options']['channels_bytes_info'][channel_name][1]['sensor_index'] = channel_settings['sensor_index']
+            settings['myograph_settings']['options']['channels_bytes_info'][channel_name][1]['adapter_index'] = channel_settings['adapter_index']
 
-        except:
-            pass
+            settings['myograph_settings']['options']['channels_bytes_info'][channel_name][2]['high_pass_filter'] = from_raw_transform_dicts['high_pass_filter_threshold'][channel_settings['high_pass_filter']]
+            settings['myograph_settings']['options']['channels_bytes_info'][channel_name][2]['low_pass_filter'] = from_raw_transform_dicts['low_pass_filter_threshold'][channel_settings['low_pass_filter']]
+            settings['myograph_settings']['options']['channels_bytes_info'][channel_name][2]['mode'] = from_raw_transform_dicts['mode'][channel_settings['mode']]
+        return settings
 
-    
+
     def __transform_settings_to_raw(self):
         return {
             'app': {

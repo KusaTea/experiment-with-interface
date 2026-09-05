@@ -1,8 +1,12 @@
 import json
+import copy
+import math
 import select
 import socket
+import sys
 import threading
 import time
+from array import array
 
 
 HOST = "127.0.0.1"
@@ -10,8 +14,11 @@ HOST = "127.0.0.1"
 BINARY_PORT = 10000
 JSON_PORT = 10001
 
-BINARY_SEND_INTERVAL = 0.001
-JSON_SEND_INTERVAL = 0.0054
+# A modest test rate reduces JSON batching in the application's recv-based reader.
+JSON_SEND_INTERVAL = 0.05
+COMMAND_SIZE = 40
+SAMPLING_RATES = (512, 2048, 5120, 10240)
+CHANNEL_COUNTS = (120, 216, 312, 408)
 
 
 SENSO_DATA = {
@@ -120,67 +127,63 @@ SENSO_DATA = {
 }
 
 
+def make_emg_block(acquisition_byte):
+    """Encode one second of interleaved, little-endian int16 samples."""
+    sampling_rate = SAMPLING_RATES[(acquisition_byte >> 3) & 3]
+    channels = CHANNEL_COUNTS[(acquisition_byte >> 1) & 3]
+    samples = array('h')
+    for index in range(sampling_rate):
+        value = round(1000 * math.sin(2 * math.pi * 50 * index / sampling_rate))
+        samples.extend(array('h', [value]) * channels)
+    if sys.byteorder != 'little':
+        samples.byteswap()
+    return samples.tobytes()
+
+
 def handle_binary_client(client_socket, address):
-    print(f"[1000] client is connected: {address}")
+    print(f"[{BINARY_PORT}] Client connected: {address}")
 
     try:
-        first_message = client_socket.recv(4096)
-
-        if not first_message:
-            print(f"[1000] client {address} has disconnected before launch")
-            return
-
-        print(
-            f"[1000] A message was recieved"
-            f"({len(first_message)} bytes): {first_message!r}"
-        )
-
-        print("[1000] Transfer was started")
-
-        value = 0
-
+        client_socket.settimeout(5)
+        commands = bytearray()
+        recording = False
+        block = b''
+        next_send = 0.0
         while True:
+            timeout = max(0, next_send - time.monotonic()) if recording else None
             readable, _, _ = select.select(
-                [client_socket],
-                [],
-                [],
-                0
+                [client_socket], [], [], timeout
             )
 
             if readable:
-                second_message = client_socket.recv(4096)
-
-                # recv() == b"" означает закрытие соединения
-                if not second_message:
-                    print(f"[1000] Client {address} disconnected")
+                received = client_socket.recv(4096)
+                if not received:
                     break
+                commands.extend(received)
+                # TCP can split a command or deliver several commands at once.
+                while len(commands) >= COMMAND_SIZE:
+                    command = bytes(commands[:COMMAND_SIZE])
+                    del commands[:COMMAND_SIZE]
+                    recording = bool(command[0] & 1)
+                    if recording:
+                        block = make_emg_block(command[0])
+                        next_send = time.monotonic()
+                        print(f"[{BINARY_PORT}] Recording started ({len(block)} bytes/s)")
+                    else:
+                        # Connection check is START -> read -> STOP. The actual
+                        # recording starts later using the very same socket.
+                        print(f"[{BINARY_PORT}] Recording stopped; waiting for START")
 
-                print(
-                    f"[1000] Stop-message "
-                    f"({len(second_message)} bytes): "
-                    f"{second_message!r}"
-                )
+            if recording and time.monotonic() >= next_send:
+                client_socket.sendall(block)
+                next_send = time.monotonic() + 1.0
 
-                print("[1000] Transfer is over")
-                break
-
-            client_socket.sendall(bytes([value]))
-
-            value = (value + 1) % 256
-
-            if BINARY_SEND_INTERVAL:
-                time.sleep(BINARY_SEND_INTERVAL)
-
-    except (
-        ConnectionResetError,
-        ConnectionAbortedError,
-        BrokenPipeError
-    ):
-        print(f"[1000] Connection with {address} is lost")
+    except OSError as error:
+        print(f"[{BINARY_PORT}] Connection with {address} ended: {error}")
 
     finally:
         client_socket.close()
-        print(f"[1000] Connection with {address} is closed")
+        print(f"[{BINARY_PORT}] Connection with {address} is closed")
 
 
 def binary_server():
@@ -199,7 +202,7 @@ def binary_server():
         server_socket.listen()
 
         print(
-            f"[1000] Server is launched: "
+            f"[{BINARY_PORT}] Server is launched: "
             f"{HOST}:{BINARY_PORT}"
         )
 
@@ -217,34 +220,27 @@ def binary_server():
 
 def handle_json_client(client_socket, address):
 
-    print(f"[1001] Client is connected: {address}")
-
-    message = (
-        json.dumps(
-            SENSO_DATA,
-            ensure_ascii=False,
-            separators=(",", ":")
-        )
-        + "\n"
-    ).encode("utf-8")
+    print(f"[{JSON_PORT}] Client is connected: {address}")
+    data = copy.deepcopy(SENSO_DATA)
 
     try:
+        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        client_socket.settimeout(5)
         while True:
+            # Synthetic Unix timestamp in microseconds; each client owns its data.
+            data['data']['ts'] = str(time.time_ns() // 1000)
+            message = (json.dumps(data, separators=(",", ":")) + "\n").encode('utf-8')
             client_socket.sendall(message)
 
             if JSON_SEND_INTERVAL:
                 time.sleep(JSON_SEND_INTERVAL)
 
-    except (
-        ConnectionResetError,
-        ConnectionAbortedError,
-        BrokenPipeError
-    ):
+    except OSError:
         pass
 
     finally:
         client_socket.close()
-        print(f"[1001] Client {address} disconnected")
+        print(f"[{JSON_PORT}] Client {address} disconnected")
 
 
 def json_server():
@@ -264,7 +260,7 @@ def json_server():
         server_socket.listen()
 
         print(
-            f"[1001] Server is launched: "
+            f"[{JSON_PORT}] Server is launched: "
             f"{HOST}:{JSON_PORT}"
         )
 

@@ -4,7 +4,7 @@ class ExercisesIterator:
 
     def __init__(self, repeats_number: int, number_of_exercises: int):
 
-        self.exercises_indeces = list(range(1, number_of_exercises)) * repeats_number
+        self.exercises_indeces = list(range(1, number_of_exercises + 1)) * repeats_number
         shuffle(self.exercises_indeces)
     
     

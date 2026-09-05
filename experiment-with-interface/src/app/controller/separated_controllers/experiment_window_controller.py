@@ -157,7 +157,7 @@ class ExperimentWindowController(QObject):
 
         self.__settings = settings
 
-        self.__create_experiment_thread(labels=labels)
+        self.__labels = labels
 
         self.__backgrounds_images = [
             QPixmap(image_dir) for image_dir in self.__dirs_store.background_image_dir
@@ -202,6 +202,9 @@ class ExperimentWindowController(QObject):
     
 
     def __start_experiment_thread(self):
+        # Build the exercise sequence from the latest saved repeat count.
+        self.__create_experiment_thread(labels=self.__labels)
+        self.__experiment_window.progress_bar.setValue(0)
         self.__thread.start()
 
     

@@ -82,8 +82,7 @@ class Controller(QObject):
             self.__stacked_windows.display_main_menu
         )
         self.__settings_window_controller.save_button_pushed.connect(
-            self.__stacked_windows.display_main_menu,
-            self.settings_updated_signal.emit()
+            self.__apply_saved_settings
         )
 
         self.__participant_info_window_controller = ParticipantInfoWindowController(
@@ -143,6 +142,12 @@ class Controller(QObject):
     def __start_experiment_callback(self):
         self.start_experiment_signal.emit()
         self.__stacked_windows.display_experiment()
+
+
+    def __apply_saved_settings(self):
+        self.__dirs_store.data_main_dir = Path(self.__settings['save_directory'])
+        self.settings_updated_signal.emit()
+        self.__stacked_windows.display_main_menu()
 
 
     def __stop_experiment_callback(self):

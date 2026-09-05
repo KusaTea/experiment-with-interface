@@ -66,7 +66,11 @@ class ConnectionWindowController(QObject):
 
     def __update_settings(self):
 
-        del self.__sensoglove_module
+        self.__sensoglove_module.close_connection()
+        self.__quattrocento_module.close_connection()
+        self.__is_sensoglove_connected = False
+        self.__is_quattrocento_connected = False
+        self.__connection_window.reset()
         self.__sensoglove_module = SensogloveModule(
             ip_address=self.__settings['glove_settings']['ip'],
             port=self.__settings['glove_settings']['port']
