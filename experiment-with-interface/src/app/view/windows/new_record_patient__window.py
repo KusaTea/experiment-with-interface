@@ -10,31 +10,34 @@ class PatientInfoWindow(QWidget):
 
     def __init__(
             self,
-            patient_info_options: PatientInfoOptionsType
+            patient_info_options: PatientInfoOptionsType,
+            labels: dict
             ):
         super().__init__()
 
+        self.__labels = labels
+
         layout = VerticalLayout()
 
-        self.code_field = TextField(field_hint='введите текст...', label_text='код испытуемого', field_data_type='number')
+        self.code_field = TextField(field_hint=self.__labels['field_hint'], label_text=self.__labels['code_field'], field_data_type='number')
         layout.addWidget(self.code_field)
         
-        self.age_field = TextField(field_hint='введите число...', label_text='возраст', field_data_type='number')
+        self.age_field = TextField(field_hint=self.__labels['field_hint'], label_text=self.__labels['age_field'], field_data_type='number')
         layout.addWidget(self.age_field)
 
-        self.gender_radio = RadioButtons(options=patient_info_options['gender_options'], label_text='пол')
+        self.gender_radio = RadioButtons(options=patient_info_options['gender_options'], label_text=self.__labels['gender_radio'])
         layout.addWidget(self.gender_radio)
 
-        self.hand_radio = RadioButtons(options=patient_info_options['hand_options'], label_text='ведущая рука')
+        self.hand_radio = RadioButtons(options=patient_info_options['hand_options'], label_text=self.__labels['hand_radio'])
         layout.addWidget(self.hand_radio)
 
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(50)
 
-        self.back_button = SecondaryButton('назад')
+        self.back_button = SecondaryButton(self.__labels['back_button'])
         buttons_layout.addWidget(self.back_button)
 
-        self.next_button = SecondaryButton('далее')
+        self.next_button = SecondaryButton(self.__labels['next_button'])
         buttons_layout.addWidget(self.next_button)
 
         layout.addLayout(buttons_layout)
@@ -69,15 +72,15 @@ class PatientInfoWindow(QWidget):
         return self.age_field.getFieldText()
     
 
-    def get_patient_gender(self) -> Literal['мужской', 'женский']:
+    def get_patient_gender(self) -> str:
         return self.gender_radio.get_selected_option()
         
 
-    def get_patient_hand(self) -> Literal['левая', 'правая']:
+    def get_patient_hand(self) -> str:
         return self.hand_radio.get_selected_option()
 
 
-    def get_patient_info(self) -> Tuple[str, str, Literal['мужской', 'женский'], Literal['левая', 'правая']]:
+    def get_patient_info(self) -> Tuple[str, str, str, str]:
         if self.validate_text_fields():
             return (
                 self.get_patient_code(),

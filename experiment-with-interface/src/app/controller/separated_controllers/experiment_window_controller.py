@@ -26,12 +26,14 @@ class ExperimentWorker(QObject):
     def __init__(
             self,
             dirs_store: DirsStore,
-            settings: SettingsData
+            settings: SettingsData,
+            labels: dict
             ):
         super().__init__()
 
         self.__dirs_store = dirs_store
         self.__settings = settings
+        self.__labels = labels
 
         self.__exercises_data = ExercisesData(
             self.__dirs_store.exercises_dir,
@@ -56,7 +58,7 @@ class ExperimentWorker(QObject):
     def __start_calibration(self):
         start_ts = time()
 
-        self.current_event.emit('ОТДЫХ')
+        self.current_event.emit(self.__labels['rest'])
         self.event_green_color.emit()
         self.current_exercise_name.emit(self.__exercises_data.get_exercise_name(-1))
         self.current_exercise_image_dir.emit(str(self.__exercises_data.get_exercise_image_dir(-1).absolute()))
@@ -68,7 +70,7 @@ class ExperimentWorker(QObject):
             self.timer_value.emit(str(int(self.__rest_time_in_s - (calib_start_ts - start_ts))))
             sleep(0.1)
 
-        self.current_event.emit('КАЛИБРОВКА')
+        self.current_event.emit(self.__labels['calibration'])
         self.event_orange_color.emit()
         self.__markup_creater.save_data(str(calib_start_ts), -1)
 
@@ -76,7 +78,7 @@ class ExperimentWorker(QObject):
             self.timer_value.emit(str(int(self.__exercise_time_in_s - (calib_end_ts - calib_start_ts))))
             sleep(0.1)
         
-        self.current_event.emit('ОТДЫХ')
+        self.current_event.emit(self.__labels['rest'])
         self.event_green_color.emit()
         self.__markup_creater.save_data(str(calib_end_ts), 0)
 
@@ -84,7 +86,7 @@ class ExperimentWorker(QObject):
     def __experiment_step(self, exercise_idx):
         start_ts = time()
 
-        self.current_event.emit('ОТДЫХ')
+        self.current_event.emit(self.__labels['rest'])
         self.event_green_color.emit()
         self.current_exercise_name.emit(self.__exercises_data.get_exercise_name(exercise_idx))
         self.current_exercise_image_dir.emit(str(self.__exercises_data.get_exercise_image_dir(exercise_idx).absolute()))
@@ -95,7 +97,7 @@ class ExperimentWorker(QObject):
             self.timer_value.emit(str(int(self.__rest_time_in_s - (exercise_start_ts - start_ts))))
             sleep(0.1)
 
-        self.current_event.emit('УПРАЖНЕНИЕ')
+        self.current_event.emit(self.__labels['exercise'])
         self.event_orange_color.emit()
         self.__markup_creater.save_data(str(exercise_start_ts), exercise_idx)
 
@@ -103,7 +105,7 @@ class ExperimentWorker(QObject):
             self.timer_value.emit(str(int(self.__exercise_time_in_s - (exercise_end_ts - exercise_start_ts))))
             sleep(0.1)
         
-        self.current_event.emit('ОТДЫХ')
+        self.current_event.emit(self.__labels['rest'])
         self.event_green_color.emit()
         self.increase_progress.emit(1)
         self.__markup_creater.save_data(str(exercise_end_ts), exercise_idx)
@@ -143,7 +145,8 @@ class ExperimentWindowController(QObject):
             dirs_store: DirsStore,
             settings: SettingsData,
             start_experiment_signal: Signal,
-            stop_signal: Signal
+            stop_signal: Signal,
+            labels: dict
             ):
 
         super().__init__()
@@ -154,7 +157,7 @@ class ExperimentWindowController(QObject):
 
         self.__settings = settings
 
-        self.__create_experiment_thread()
+        self.__create_experiment_thread(labels=labels)
 
         self.__backgrounds_images = [
             QPixmap(image_dir) for image_dir in self.__dirs_store.background_image_dir
@@ -167,10 +170,11 @@ class ExperimentWindowController(QObject):
         self.experiment_finished.emit()
 
     
-    def __create_experiment_thread(self):
+    def __create_experiment_thread(self, labels):
         self.__experiment_worker = ExperimentWorker(
             dirs_store=self.__dirs_store,
-            settings=self.__settings
+            settings=self.__settings,
+            labels=labels
         )
 
         self.__thread = QThread()

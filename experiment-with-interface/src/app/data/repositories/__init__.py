@@ -10,6 +10,7 @@ from .settings_data import SettingsData
 from .quattrocento_data_handler import QuattrocentoDataHandler
 from .sensoglove_data_handler import SensogloveDataHandler
 from .data_merger import DataMerger
+from .labels_data import LabelsData
 
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     'SettingsData',
     'QuattrocentoDataHandler',
     'SensogloveDataHandler',
-    'DataMerger'
+    'DataMerger',
+    'LabelsData'
 ]

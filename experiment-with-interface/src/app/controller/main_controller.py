@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import json
 
 from PySide6.QtCore import Signal, QObject
 
@@ -7,13 +8,13 @@ from view.types import *
 from view import StackedWindows
 
 from data.types import *
-from data.repositories import SettingsData
+from data.repositories import SettingsData, LabelsData
 
 from controller.separated_controllers import MainWindowController, SettingsWindowController, ParticipantInfoWindowController, ConnectionWindowController, ExperimentWindowController, FinishWindowController
 from controller.modules import DirsStore, DataConverter
 
-from utils.dirs_data import settings_dir, exercises_dir, exercises_images_dir, background_images_dirs
-from utils.view_data import participant_info_options, bar_info
+from utils.dirs_data import settings_dir, exercises_dir, exercises_images_dir, background_images_dirs, labels_dir
+from utils.view_data import participant_info_options, bar_info, myograph_settings_data
 
 class Controller(QObject):
 
@@ -30,6 +31,9 @@ class Controller(QObject):
 
         self.__settings = SettingsData(settings_dir)
 
+        self.__labels = LabelsData(labels_dir, self.__settings['lang'])
+
+
         data_main_dir = Path(self.__settings['save_directory'])
         if not os.path.exists(data_main_dir):
             os.makedirs(data_main_dir)
@@ -42,7 +46,7 @@ class Controller(QObject):
         )
         
         patient_window_arguments: PatientWindowArgumentsType = {
-                'patient_info_options': participant_info_options
+                'patient_info_options': participant_info_options[self.__settings['lang']]
             }
 
         experiment_window_arguments: ExperimentWindowArgumentsType = {
@@ -50,6 +54,8 @@ class Controller(QObject):
         }
 
         stacked_windows_arguments: StackedWindowsArgumentsType = {
+            'labels': self.__labels,
+            'settings_window_arguments': {'myograph_settings_options': myograph_settings_data[self.__settings['lang']]},
             'patient_window_arguments': patient_window_arguments,
             'experiment_window_arguments': experiment_window_arguments
         }
@@ -112,7 +118,8 @@ class Controller(QObject):
             dirs_store=self.__dirs_store,
             settings=self.__settings,
             start_experiment_signal=self.start_experiment_signal,
-            stop_signal=self.common_stop_signal
+            stop_signal=self.common_stop_signal,
+            labels=self.__labels['experiment_controller']
         )
         self.__experiment_window_controller.experiment_finished.connect(
             self.__stop_experiment_callback

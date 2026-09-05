@@ -9,30 +9,35 @@ from view import constants
 
 class ConnectionWindow(QWidget):
     
-    def __init__(self):
+    def __init__(self, labels: dict):
         super().__init__()
+
+        self.__labels = labels
 
         layout = VerticalLayout()
 
-        self.connect_button = PrimaryButton('подключиться к устройствам')
+        self.connect_button = PrimaryButton(self.__labels['connect_button'])
         layout.addWidget(self.connect_button)
 
         info_grid = QGridLayout()
+
+        self.myograph_label = QLabel(self.__labels['myograph_label'])
         info_grid.addWidget(
-            QLabel('электромиограф:'),
+            self.myograph_label,
             1,
             1,
             alignment=Qt.AlignmentFlag.AlignLeft
             )
-        
+
+        self.glove_label = QLabel(self.__labels['glove_label'])
         info_grid.addWidget(
-            QLabel('перчатка:'),
+            self.glove_label,
             2,
             1,
             alignment=Qt.AlignmentFlag.AlignLeft
             )
         
-        self.myograph_status = Label('')
+        self.myograph_status = Label(self.__labels['not_connected'])
         info_grid.addWidget(
             self.myograph_status,
             1,
@@ -40,7 +45,7 @@ class ConnectionWindow(QWidget):
             alignment=Qt.AlignmentFlag.AlignRight
             )
         
-        self.glove_status = Label('')
+        self.glove_status = Label(self.__labels['not_connected'])
         info_grid.addWidget(
             self.glove_status,
             2,
@@ -52,9 +57,9 @@ class ConnectionWindow(QWidget):
 
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(10)
-        self.back_button = SecondaryButton('назад')
+        self.back_button = SecondaryButton(self.__labels['back_button'])
         buttons_layout.addWidget(self.back_button)
-        self.start_record_button = SecondaryButton('начать запись')
+        self.start_record_button = SecondaryButton(self.__labels['start_record_button'])
         buttons_layout.addWidget(self.start_record_button)
         layout.addLayout(buttons_layout)
 
@@ -73,18 +78,18 @@ class ConnectionWindow(QWidget):
         self.start_record_button.clicked.connect(callback)
 
 
-    def change_myogragh_status(self, text: str, is_connected: bool):
-        self.myograph_status.setText(text)
+    def change_myogragh_status(self, is_connected: bool):
+        self.myograph_status.setText(self.__labels['connected' if is_connected else 'not_connected'])
         color = constants.active_color if is_connected else constants.error_color
         self.myograph_status.change_text_color(color)
 
 
-    def change_glove_status(self, text: str, is_connected: bool):
-        self.glove_status.setText(text)
+    def change_glove_status(self, is_connected: bool):
+        self.glove_status.setText(self.__labels['connected' if is_connected else 'not_connected'])
         color = constants.active_color if is_connected else constants.error_color
         self.glove_status.change_text_color(color)
     
 
     def reset(self):
-        self.change_myogragh_status('', False)
-        self.change_glove_status('', False)
+        self.change_myogragh_status(False)
+        self.change_glove_status(False)

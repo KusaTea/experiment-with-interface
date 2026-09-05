@@ -17,11 +17,8 @@ class DropDownInfoType(TypedDict):
     default_option: str
 
 
-ElectromyographSettingsType = List[DropDownInfoType]
-
-
 class SettingsWindowArgumentsType(TypedDict):
-    myograph_settings: ElectromyographSettingsType
+    myograph_settings_options: dict
 
 
 class PatientWindowArgumentsType(TypedDict):
@@ -33,5 +30,7 @@ class ExperimentWindowArgumentsType(TypedDict):
 
 
 class StackedWindowsArgumentsType(TypedDict):
+    labels: dict
     patient_window_arguments: PatientWindowArgumentsType
     experiment_window_arguments: ExperimentWindowArgumentsType
+    settings_window_arguments: SettingsWindowArgumentsType

@@ -5,6 +5,7 @@ from pathlib import Path
 class BasicSettingsCreater:
 
     basic_settings = {
+        'lang': 'eng',
         'save_directory': './data',
         'myograph_settings': {
             'ip': '169.254.1.10',

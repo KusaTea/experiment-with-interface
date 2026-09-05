@@ -4,14 +4,18 @@ from typing import Literal
 class DataConverter:
 
     def __init__(self):
-        self.__gender_dict: dict[Literal['мужской', 'женский'], Literal['m', 'f']] = {
+        self.__gender_dict: dict[Literal['мужской', 'женский', 'male', 'female'], Literal['m', 'f']] = {
             'мужской': 'm',
-            'женский': 'f'
+            'женский': 'f',
+            'male': 'm',
+            'female': 'f'
         }
 
-        self.__hand_dict: dict[Literal['левая', 'правая'], Literal['l', 'r']] = {
+        self.__hand_dict: dict[Literal['левая', 'правая', 'left', 'right'], Literal['l', 'r']] = {
             'левая': 'l',
-            'правая': 'r'
+            'правая': 'r',
+            'left': 'l',
+            'right': 'r'
         }
 
 

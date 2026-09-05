@@ -8,17 +8,23 @@ from view.elements import VerticalLayout, SecondaryButton
 
 class FinishWindow(QWidget):
 
-    def __init__(self):
+    def __init__(self, labels: dict):
         super().__init__()
 
         layout = VerticalLayout()
 
-        layout.addWidget(QLabel('эксперимент окончен'), alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop))
-        layout.addWidget(QLabel('СПАСИБО ЗА УЧАСТИЕ!'), alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
-        self.save_directory_label = QLabel('сохраненный файл:\n')
+        self.__labels = labels
+
+        self.experiment_finish_label = QLabel(self.__labels['experiment_finish_label'])
+        layout.addWidget(self.experiment_finish_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop))
+
+        self.thanks_labels = QLabel(self.__labels['thanks_labels'])
+        layout.addWidget(self.thanks_labels, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
+
+        self.save_directory_label = QLabel(self.__labels['save_directory_label'])
         layout.addWidget(self.save_directory_label, alignment=(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom))
         
-        self.main_menu_button = SecondaryButton('главное меню')
+        self.main_menu_button = SecondaryButton(self.__labels['main_menu_button'])
         layout.addWidget(self.main_menu_button, alignment=Qt.AlignmentFlag.AlignBottom)
 
         self.setLayout(layout)
@@ -29,4 +35,4 @@ class FinishWindow(QWidget):
 
 
     def change_save_directory_label(self, directory: str):
-        self.save_directory_label.setText('сохраненный файл:\n' + directory)
+        self.save_directory_label.setText(self.__labels['save_directory_label'] + directory)

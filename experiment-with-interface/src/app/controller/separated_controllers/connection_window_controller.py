@@ -100,9 +100,9 @@ class ConnectionWindowController(QObject):
 
 
         if self.__is_sensoglove_connected:
-            self.__connection_window.change_glove_status('подключено', True)
+            self.__connection_window.change_glove_status(True)
         else:
-            self.__connection_window.change_glove_status('нет подключения', False)
+            self.__connection_window.change_glove_status(False)
 
         try:
             if not self.__is_quattrocento_connected:
@@ -120,9 +120,9 @@ class ConnectionWindowController(QObject):
             self.__is_quattrocento_connected = False
 
         if self.__is_quattrocento_connected:
-            self.__connection_window.change_myogragh_status('подключено', True)
+            self.__connection_window.change_myogragh_status(True)
         else:
-            self.__connection_window.change_myogragh_status('нет подключения', False)
+            self.__connection_window.change_myogragh_status(False)
 
 
     def __back_callback(self):

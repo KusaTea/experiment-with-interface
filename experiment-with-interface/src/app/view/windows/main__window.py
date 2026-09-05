@@ -8,13 +8,12 @@ from view.elements import VerticalLayout, SecondaryButton
 
 class MainWindow(QWidget):
 
-    def __init__(self):
+    def __init__(self, labels: dict):
         super().__init__()
 
-        self.new_record_button = SecondaryButton('НОВАЯ ЗАПИСЬ')
+        self.new_record_button = SecondaryButton(labels['new_record_button'])
         
-        
-        self.settings_button = SecondaryButton('НАСТРОЙКИ')
+        self.settings_button = SecondaryButton(labels['settings_button'])
 
         layout = VerticalLayout()
         layout.addWidget(self.new_record_button, alignment=(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter))
